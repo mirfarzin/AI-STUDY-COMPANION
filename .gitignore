@@ -1,0 +1,11 @@
+venv/
+backend/venv/
+node_modules/
+__pycache__/
+.env
+backend/.env
+credentials.json
+backend/credentials.json
+chroma_store/
+notes_raw/
+backend/notes_raw/
