@@ -18,6 +18,11 @@ app.include_router(predict.router)
 app.include_router(pyq.router)
 app.include_router(sync.router)
 
+from services.chroma_service import get_collection_stats
+
+@app.get("/stats")
+def read_stats():
+    return get_collection_stats()
 
 @app.get("/")
 def root():
