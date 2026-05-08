@@ -1,10 +1,10 @@
 """
 backend/services/chroma_service.py
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 import os
 import uuid
-from pathlib import Path
 from typing import Optional
 
 import chromadb
@@ -18,7 +18,7 @@ def _get_embedding_fn():
     return embedding_functions.DefaultEmbeddingFunction()
 
 
-_client: Optional[chromadb.PersistentClient] = None
+_client: Optional[chromadb.HttpClient] = None
 _collection = None
 
 
@@ -26,8 +26,15 @@ def get_client():
     global _client
 
     if _client is None:
-        Path(CHROMA_DIR).mkdir(parents=True, exist_ok=True)
-        _client = chromadb.PersistentClient(path=CHROMA_DIR)
+        _client = chromadb.HttpClient(
+            ssl=True,
+            host="api.trychroma.com",
+            tenant=os.getenv("CHROMA_TENANT"),
+            database=os.getenv("CHROMA_DATABASE"),
+            headers={
+                "x-chroma-token": os.getenv("CHROMA_API_KEY")
+            },
+        )
 
     return _client
 
@@ -52,6 +59,7 @@ def add_chunks(
     chunks: list[str],
     metadatas: list[dict] = None,
 ) -> int:
+
     collection = get_or_create_collection()
 
     if metadatas is None:
@@ -130,7 +138,76 @@ def semantic_search(
     return output
 
 
+def query_chunks(
+    query: str,
+    n_results: int = 5,
+    where: dict = None,
+) -> list:
+
+    collection = get_or_create_collection()
+
+    try:
+        results = collection.query(
+            query_texts=[query],
+            n_results=n_results,
+            where=where,
+            include=["documents", "metadatas", "distances"],
+        )
+
+        output = []
+
+        for doc, meta, dist in zip(
+            results["documents"][0],
+            results["metadatas"][0],
+            results["distances"][0],
+        ):
+            output.append(
+                {
+                    "text": doc,
+                    "metadata": meta,
+                    "score": round(1 - dist, 4),
+                }
+            )
+
+        return output
+
+    except Exception as e:
+        print(f"[CHROMA ERROR] {e}")
+        return []
+
+
+def get_all_chunks(where: dict = None) -> list:
+
+    collection = get_or_create_collection()
+
+    try:
+        results = collection.get(
+            where=where,
+            include=["documents", "metadatas"],
+        )
+
+        output = []
+
+        for doc, meta in zip(
+            results["documents"],
+            results["metadatas"],
+        ):
+            output.append(
+                {
+                    "text": doc,
+                    "metadata": meta,
+                }
+            )
+
+        return output
+
+    except Exception as e:
+        print(f"[CHROMA ERROR] {e}")
+        return []
+
+
 def get_collection_stats() -> dict:
+
     try:
         collection = get_or_create_collection()
         count = collection.count()
@@ -142,7 +219,9 @@ def get_collection_stats() -> dict:
                 "doc_types": {},
             }
 
-        all_meta = collection.get(include=["metadatas"])["metadatas"]
+        all_meta = collection.get(
+            include=["metadatas"]
+        )["metadatas"]
 
         subjects = list(
             {
@@ -169,6 +248,7 @@ def get_collection_stats() -> dict:
 
 
 def delete_subject(subject: str) -> int:
+
     collection = get_or_create_collection()
 
     results = collection.get(
@@ -184,11 +264,17 @@ def delete_subject(subject: str) -> int:
 
 
 def list_collections() -> list[str]:
+
     client = get_client()
-    return [c.name for c in client.list_collections()]
+
+    return [
+        c.name
+        for c in client.list_collections()
+    ]
 
 
 def delete_collection(name: str) -> bool:
+
     try:
         client = get_client()
         client.delete_collection(name)
@@ -196,41 +282,3 @@ def delete_collection(name: str) -> bool:
 
     except Exception:
         return False
-def query_chunks(query: str, n_results: int = 5, where: dict = None) -> list:
-    collection = get_or_create_collection()
-    try:
-        results = collection.query(
-            query_texts=[query],
-            n_results=n_results,
-            where=where,
-            include=["documents", "metadatas", "distances"],
-        )
-        output = []
-        for doc, meta, dist in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0],
-        ):
-            output.append({
-                "text":     doc,
-                "metadata": meta,
-                "score":    round(1 - dist, 4),
-            })
-        return output
-    except Exception as e:
-        print(f"[CHROMA ERROR] {e}")
-        return []
-def get_all_chunks(where: dict = None) -> list:
-    collection = get_or_create_collection()
-    try:
-        results = collection.get(
-            where=where,
-            include=["documents", "metadatas"],
-        )
-        output = []
-        for doc, meta in zip(results["documents"], results["metadatas"]):
-            output.append({"text": doc, "metadata": meta})
-        return output
-    except Exception as e:
-        print(f"[CHROMA ERROR] {e}")
-        return []
