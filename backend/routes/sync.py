@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from services.scraper_service import scrape_ritnotebook
 from services.pdf_service import ingest_folder
-from services.chroma_service import get_collection_stats
+from services.qdrant_service import get_collection_stats
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 

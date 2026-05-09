@@ -3,7 +3,7 @@ import re
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from services.pdf_service import extract_text_from_pdf, chunk_text
-from services.chroma_service import (
+from services.qdrant_service import (
     add_chunks,
     list_collections,
     delete_collection,
@@ -68,7 +68,7 @@ async def get_documents():
         "documents": list_collections()
     }
 
-from services.chroma_service import get_collection_stats, delete_subject
+from services.qdrant_service import get_collection_stats, delete_subject
 
 @router.get("/subjects")
 async def get_subjects():

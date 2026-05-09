@@ -14,7 +14,7 @@ Algorithm:
 import re
 from sentence_transformers import SentenceTransformer, util
 
-from services.chroma_service import list_collections, get_all_chunks
+from services.qdrant_service import list_collections, get_all_chunks
 
 # ---------------------------------------------------------------------------
 # Model — loaded lazily on first call so startup isn't blocked

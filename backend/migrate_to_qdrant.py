@@ -7,7 +7,7 @@ dotenv.load_dotenv()
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance
-from services.chroma_service import get_all_chunks
+from services.qdrant_service import get_all_chunks
 from chromadb.utils import embedding_functions
 
 # Qdrant connection

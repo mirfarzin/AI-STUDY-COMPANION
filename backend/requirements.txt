@@ -1,7 +1,6 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-chromadb==0.4.24
-numpy==1.26.4
+qdrant-client==1.9.1
 python-dotenv==1.0.0
 python-multipart==0.0.6
 pymupdf==1.23.8

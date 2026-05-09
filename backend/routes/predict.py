@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.chroma_service import get_all_chunks
+from services.qdrant_service import get_all_chunks
 from services.groq_service import predict_questions
 
 router = APIRouter()

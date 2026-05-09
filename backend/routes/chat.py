@@ -1,7 +1,7 @@
 import math
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.chroma_service import query_chunks, list_collections
+from services.qdrant_service import query_chunks, list_collections
 from services.groq_service import chat_with_context
 
 router = APIRouter()

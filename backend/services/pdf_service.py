@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 import fitz  # PyMuPDF
-from services.chroma_service import get_or_create_collection
+from services.qdrant_service import get_or_create_collection
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 CHUNK_SIZE    = 800    # characters per chunk

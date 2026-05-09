@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
 from routes import upload, chat, predict, pyq, sync
-from services.chroma_service import get_collection_stats
+from services.qdrant_service import get_collection_stats
 
 # ── APP INIT ─────────────────────────────────────────────────────────────────
 app = FastAPI(title="VTU Study Companion API", version="1.0.0")
