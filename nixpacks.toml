@@ -1,11 +1,14 @@
+[build]
+command = "python -m pip install -r backend/requirements.txt"
+
+[deploy]
+cmd = "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
+
 [phases.setup]
-nixPkgs = ["python311", "gcc"]
+nixPkgs = ["python311"]
 
 [phases.install]
-cmds = [
-    "python -m pip install --upgrade pip",
-    "python -m pip install -r backend/requirements.txt"
-]
+cmds = ["python -m pip install -r backend/requirements.txt"]
 
 [start]
-cmd = "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "cd backend && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
