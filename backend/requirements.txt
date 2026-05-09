@@ -1,25 +1,9 @@
-# backend/requirements.txt
-
-# FastAPI
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
-python-multipart==0.0.12
-
-# PDF processing
-PyMuPDF==1.24.13          # fitz — fast, reliable text extraction
-
-# Scraping
-httpx==0.27.2
-beautifulsoup4==4.12.3
-
-# Vector DB
-chromadb==0.5.23
-sentence-transformers==3.3.1   # local embeddings (all-MiniLM-L6-v2)
-
-# Gemini API
-google-generativeai==0.8.3
-
-# Utilities
-python-dotenv==1.0.1
-pydantic==2.10.3
-qdrant-client>=1.9.0
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+chromadb==0.5.0
+qdrant-client==1.11.0
+python-dotenv==1.0.0
+pymupdf==1.24.0
+groq==0.9.0
+httpx==0.27.0
+pypdf2==3.0.0
