@@ -2,7 +2,7 @@
 backend/main.py
 FastAPI application entry point for VTU Study Companion.
 """
-
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,25 +14,25 @@ from services.chroma_service import get_collection_stats
 app = FastAPI(title="VTU Study Companion API", version="1.0.0")
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
+# Allow both local dev and production frontend origins
+FRONTEND_URLS = os.getenv("FRONTEND_URLS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174")
+allowed_origins = [u.strip() for u in FRONTEND_URLS.split(",") if u.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite default
-        "http://localhost:5174",  # Vite fallback / second instance
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ── ROUTES ───────────────────────────────────────────────────────────────────
-app.include_router(upload.router, prefix="/api")
-app.include_router(chat.router, prefix="/api")
-app.include_router(predict.router, prefix="/api")
-app.include_router(pyq.router, prefix="/api")
-app.include_router(sync.router, prefix="/api")
+# No /api prefix — frontend calls routes directly
+app.include_router(upload.router)
+app.include_router(chat.router)
+app.include_router(predict.router)
+app.include_router(pyq.router)
+app.include_router(sync.router)
 
 # ── HEALTH / STATS ───────────────────────────────────────────────────────────
 @app.get("/")

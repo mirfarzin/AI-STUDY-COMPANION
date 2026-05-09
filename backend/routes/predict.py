@@ -16,5 +16,8 @@ async def predict(req: PredictRequest):
     if not chunks:
         raise HTTPException(status_code=404, detail="Subject not found or contains no content.")
 
-    questions = predict_questions(chunks)
+    # Extract just the text strings — groq_service.predict_questions expects list[str]
+    texts = [c["text"] for c in chunks[:20]]
+
+    questions = predict_questions(texts)
     return {"questions": questions, "subject": req.subject}

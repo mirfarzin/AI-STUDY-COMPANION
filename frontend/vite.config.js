@@ -9,8 +9,13 @@ export default defineConfig({
       '/upload': 'http://localhost:8000',
       '/documents': 'http://localhost:8000',
       '/document': 'http://localhost:8000',
+      '/subjects': 'http://localhost:8000',
+      '/subject': 'http://localhost:8000',
       '/chat': 'http://localhost:8000',
       '/predict': 'http://localhost:8000',
+      '/predict-questions': 'http://localhost:8000',
+      '/health': 'http://localhost:8000',
+      '/stats': 'http://localhost:8000',
     },
   },
 })

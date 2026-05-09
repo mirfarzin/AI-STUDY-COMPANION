@@ -1,5 +1,8 @@
 import axios from 'axios'
-axios.defaults.baseURL = 'http://localhost:8000'
+
+// In production (Vercel), use the VITE_API_URL env var pointing to Railway backend.
+// In dev, Vite proxy handles it (no baseURL needed), but we fall back to localhost.
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || ''
 
 export const uploadPDF = (file, onProgress) => {
   const form = new FormData()
