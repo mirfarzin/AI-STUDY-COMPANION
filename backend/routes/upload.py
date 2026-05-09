@@ -19,7 +19,7 @@ def _check_vector_db_ready():
         if not VECTOR_DB_READY:
             raise HTTPException(
                 status_code=503,
-                detail=f"Vector database not available: {VECTOR_DB_ERROR}. Cannot upload documents. Please configure QDRANT_URL and QDRANT_API_KEY environment variables, or set USE_CHROMA=true to use local ChromaDB."
+                detail=f"Qdrant not available: {VECTOR_DB_ERROR}. Cannot upload documents. Please configure QDRANT_URL and QDRANT_API_KEY environment variables."
             )
     except ImportError:
         pass  # Fallback if import fails

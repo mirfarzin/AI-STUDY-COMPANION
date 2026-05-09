@@ -8,6 +8,7 @@ import uuid
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
+from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,9 +17,24 @@ load_dotenv()
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 COLLECTION_NAME = "vtu_study_companion"
-VECTOR_SIZE = 384  # Size of the embedding vectors from DefaultEmbeddingFunction
+VECTOR_SIZE = 384  # Size of the embedding vectors from sentence-transformers
 
 _client: Optional[QdrantClient] = None
+_embedding_model: Optional[SentenceTransformer] = None
+
+
+def _get_embedding_model() -> Optional[SentenceTransformer]:
+    """Get or create sentence-transformers embedding model"""
+    global _embedding_model
+    
+    if _embedding_model is None:
+        try:
+            _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+        except Exception as e:
+            print(f"[QDRANT ERROR] Failed to load embedding model: {e}")
+            return None
+    
+    return _embedding_model
 
 
 def get_client() -> Optional[QdrantClient]:
@@ -53,11 +69,13 @@ def _ensure_collection():
 
 
 def _get_embedding(text: str) -> List[float]:
-    """Get embedding for text using DefaultEmbeddingFunction"""
+    """Get embedding for text using sentence-transformers"""
     try:
-        from chromadb.utils import embedding_functions
-        embedding_fn = embedding_functions.DefaultEmbeddingFunction()
-        return embedding_fn([text])[0]
+        model = _get_embedding_model()
+        if model is None:
+            return [0.0] * VECTOR_SIZE
+        embedding = model.encode(text)
+        return embedding.tolist()
     except Exception as e:
         print(f"[QDRANT ERROR] Failed to get embedding: {e}")
         return [0.0] * VECTOR_SIZE

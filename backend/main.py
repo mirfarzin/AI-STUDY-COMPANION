@@ -9,29 +9,26 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import routers
 from routes import upload, chat, predict, pyq, sync
 
-# ── VECTOR DB INITIALIZATION ──────────────────────────────────────────────────
-USE_CHROMA = os.getenv("USE_CHROMA", "false").lower() == "true"
+# ── QDRANT CLOUD INITIALIZATION ───────────────────────────────────────────────
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 VECTOR_DB_READY = False
 VECTOR_DB_ERROR = None
 
 try:
-    if USE_CHROMA:
-        # Use local ChromaDB
-        from services.chroma_service import get_collection_stats
-        VECTOR_DB_READY = True
-        VECTOR_DB_TYPE = "ChromaDB (local)"
-    else:
-        # Use Qdrant Cloud
-        from services.qdrant_service import get_collection_stats, get_client
+    if QDRANT_URL and QDRANT_API_KEY:
+        from services.qdrant_service import get_client, get_collection_stats
         # Try to initialize Qdrant client
         if get_client():
             VECTOR_DB_READY = True
             VECTOR_DB_TYPE = "Qdrant Cloud"
         else:
-            VECTOR_DB_ERROR = "Qdrant credentials (QDRANT_URL, QDRANT_API_KEY) not configured"
+            VECTOR_DB_ERROR = "Failed to connect to Qdrant Cloud"
+    else:
+        VECTOR_DB_ERROR = "Qdrant credentials (QDRANT_URL, QDRANT_API_KEY) not configured"
 except Exception as e:
     VECTOR_DB_READY = False
-    VECTOR_DB_ERROR = f"Failed to initialize vector database: {str(e)}"
+    VECTOR_DB_ERROR = f"Failed to initialize Qdrant: {str(e)}"
 
 # ── APP INIT ─────────────────────────────────────────────────────────────────
 app = FastAPI(title="VTU Study Companion API", version="1.0.0")
@@ -83,7 +80,7 @@ def read_stats():
     if not VECTOR_DB_READY:
         raise HTTPException(
             status_code=503,
-            detail=f"Vector database not initialized: {VECTOR_DB_ERROR}"
+            detail=f"Qdrant not initialized: {VECTOR_DB_ERROR}. Please configure QDRANT_URL and QDRANT_API_KEY environment variables."
         )
     try:
         return get_collection_stats()
