@@ -11,7 +11,7 @@ from typing import Optional
 import chromadb
 from chromadb.utils import embedding_functions
 
-CHROMA_DIR = os.getenv("CHROMA_DIR", "./chroma_store")
+CHROMA_DIR = os.getenv("CHROMA_DIR", "/tmp/chroma_store")
 COLLECTION_NAME = "vtu_study_companion"
 
 
