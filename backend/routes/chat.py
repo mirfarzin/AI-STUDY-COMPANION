@@ -14,15 +14,30 @@ class ChatRequest(BaseModel):
 
 def _distance_to_similarity(distance: float) -> int:
     """
-    Convert ChromaDB L2 distance → 0–100 similarity score.
+    Convert distance → 0–100 similarity score.
     Uses a simple exponential decay: sim = 100 * exp(-distance / 2).
-    Lower L2 distance = higher similarity.
+    Lower distance = higher similarity.
     """
     return round(100 * math.exp(-distance / 2))
 
 
+def _check_vector_db_ready():
+    """Check if vector database is initialized, raise error if not."""
+    try:
+        from main import VECTOR_DB_READY, VECTOR_DB_ERROR
+        if not VECTOR_DB_READY:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Vector database not available: {VECTOR_DB_ERROR}. Please configure QDRANT_URL and QDRANT_API_KEY environment variables, or set USE_CHROMA=true to use local ChromaDB."
+            )
+    except ImportError:
+        pass  # Fallback if import fails
+
+
 @router.post("/chat")
 async def chat(req: ChatRequest):
+    _check_vector_db_ready()
+    
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 

@@ -3,12 +3,35 @@ backend/main.py
 FastAPI application entry point for VTU Study Companion.
 """
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
 from routes import upload, chat, predict, pyq, sync
-from services.qdrant_service import get_collection_stats
+
+# ── VECTOR DB INITIALIZATION ──────────────────────────────────────────────────
+USE_CHROMA = os.getenv("USE_CHROMA", "false").lower() == "true"
+VECTOR_DB_READY = False
+VECTOR_DB_ERROR = None
+
+try:
+    if USE_CHROMA:
+        # Use local ChromaDB
+        from services.chroma_service import get_collection_stats
+        VECTOR_DB_READY = True
+        VECTOR_DB_TYPE = "ChromaDB (local)"
+    else:
+        # Use Qdrant Cloud
+        from services.qdrant_service import get_collection_stats, get_client
+        # Try to initialize Qdrant client
+        if get_client():
+            VECTOR_DB_READY = True
+            VECTOR_DB_TYPE = "Qdrant Cloud"
+        else:
+            VECTOR_DB_ERROR = "Qdrant credentials (QDRANT_URL, QDRANT_API_KEY) not configured"
+except Exception as e:
+    VECTOR_DB_READY = False
+    VECTOR_DB_ERROR = f"Failed to initialize vector database: {str(e)}"
 
 # ── APP INIT ─────────────────────────────────────────────────────────────────
 app = FastAPI(title="VTU Study Companion API", version="1.0.0")
@@ -37,17 +60,35 @@ app.include_router(sync.router)
 # ── HEALTH / STATS ───────────────────────────────────────────────────────────
 @app.get("/")
 def root():
+    status = "degraded" if not VECTOR_DB_READY else "running"
     return {
         "message": "VTU Study Companion API is running",
+        "status": status,
+        "vector_db": VECTOR_DB_TYPE if VECTOR_DB_READY else "Not initialized",
         "docs": "/docs",
         "health": "/health"
     }
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    status = "healthy" if VECTOR_DB_READY else "degraded"
+    response = {"status": status}
+    if not VECTOR_DB_READY:
+        response["error"] = VECTOR_DB_ERROR
+    return response
 
 @app.get("/stats")
 def read_stats():
-    """Return ChromaDB collection stats (for debugging/monitoring)."""
-    return get_collection_stats()
+    """Return vector database collection stats (for debugging/monitoring)."""
+    if not VECTOR_DB_READY:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Vector database not initialized: {VECTOR_DB_ERROR}"
+        )
+    try:
+        return get_collection_stats()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve stats: {str(e)}"
+        )

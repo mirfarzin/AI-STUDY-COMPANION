@@ -12,6 +12,19 @@ from services.qdrant_service import (
 router = APIRouter()
 
 
+def _check_vector_db_ready():
+    """Check if vector database is initialized, raise error if not."""
+    try:
+        from main import VECTOR_DB_READY, VECTOR_DB_ERROR
+        if not VECTOR_DB_READY:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Vector database not available: {VECTOR_DB_ERROR}. Cannot upload documents. Please configure QDRANT_URL and QDRANT_API_KEY environment variables, or set USE_CHROMA=true to use local ChromaDB."
+            )
+    except ImportError:
+        pass  # Fallback if import fails
+
+
 def _sanitize(name: str) -> str:
     """Make a valid ChromaDB collection name."""
 
@@ -30,6 +43,7 @@ def _sanitize(name: str) -> str:
 
 @router.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
+    _check_vector_db_ready()
 
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
