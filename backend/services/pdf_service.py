@@ -76,10 +76,11 @@ def ingest_pdf(
     collection = get_or_create_collection()
 
     # Check if already ingested (by source path)
-    existing = collection.get(where={"source_path": str(path)})
-    if existing and existing["ids"]:
-        print(f"  [SKIP] Already indexed: {path.name}")
-        return 0
+    if not force:
+        existing = collection.get(where={"source_path": str(path)})
+        if existing and existing["ids"]:
+            print(f"  [SKIP] Already indexed: {path.name}")
+            return 0
 
     print(f"  [INGEST] {path.name} | {subject} | {unit}")
     raw_text = extract_text_from_pdf(path)
