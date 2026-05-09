@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 import uuid
+from pathlib import Path
 from typing import Optional
 
 import chromadb
@@ -18,7 +19,7 @@ def _get_embedding_fn():
     return embedding_functions.DefaultEmbeddingFunction()
 
 
-_client: Optional[chromadb.HttpClient] = None
+_client: Optional[chromadb.PersistentClient] = None  # Changed from HttpClient
 _collection = None
 
 
@@ -26,15 +27,11 @@ def get_client():
     global _client
 
     if _client is None:
-        _client = chromadb.HttpClient(
-            ssl=True,
-            host="api.trychroma.com",
-            tenant=os.getenv("CHROMA_TENANT"),
-            database=os.getenv("CHROMA_DATABASE"),
-            headers={
-                "x-chroma-token": os.getenv("CHROMA_API_KEY")
-            },
-        )
+        # Create directory if it doesn't exist
+        Path(CHROMA_DIR).mkdir(parents=True, exist_ok=True)
+        
+        # Use local persistent storage instead of cloud
+        _client = chromadb.PersistentClient(path=CHROMA_DIR)
 
     return _client
 
@@ -67,13 +64,23 @@ def add_chunks(
 
     ids = [uuid.uuid4().hex for _ in chunks]
 
-    collection.add(
-        ids=ids,
-        documents=chunks,
-        metadatas=metadatas,
-    )
+    # Add in batches to avoid memory issues with large files
+    batch_size = 500
+    total_added = 0
+    
+    for i in range(0, len(chunks), batch_size):
+        batch_chunks = chunks[i:i+batch_size]
+        batch_metadatas = metadatas[i:i+batch_size]
+        batch_ids = ids[i:i+batch_size]
+        
+        collection.add(
+            ids=batch_ids,
+            documents=batch_chunks,
+            metadatas=batch_metadatas,
+        )
+        total_added += len(batch_chunks)
 
-    return len(chunks)
+    return total_added
 
 
 def semantic_search(
@@ -269,3 +276,16 @@ def delete_collection(name: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def reset_collection() -> None:
+    """Delete and recreate the collection - useful for fresh starts"""
+    try:
+        client = get_client()
+        client.delete_collection(COLLECTION_NAME)
+    except Exception:
+        pass  # Collection might not exist
+    
+    global _collection
+    _collection = None
+    get_or_create_collection()
