@@ -98,10 +98,8 @@ def semantic_search(
         filters.append({"doc_type": {"$eq": doc_type}})
 
     where = None
-
     if len(filters) == 1:
         where = filters[0]
-
     elif len(filters) > 1:
         where = {"$and": filters}
 
@@ -219,9 +217,7 @@ def get_collection_stats() -> dict:
                 "doc_types": {},
             }
 
-        all_meta = collection.get(
-            include=["metadatas"]
-        )["metadatas"]
+        all_meta = collection.get(include=["metadatas"])["metadatas"]
 
         subjects = list(
             {
@@ -232,7 +228,6 @@ def get_collection_stats() -> dict:
         )
 
         doc_types = {}
-
         for m in all_meta:
             dt = m.get("doc_type", "unknown")
             doc_types[dt] = doc_types.get(dt, 0) + 1
@@ -251,10 +246,7 @@ def delete_subject(subject: str) -> int:
 
     collection = get_or_create_collection()
 
-    results = collection.get(
-        where={"subject": {"$eq": subject}}
-    )
-
+    results = collection.get(where={"subject": {"$eq": subject}})
     ids = results["ids"]
 
     if ids:
@@ -266,11 +258,7 @@ def delete_subject(subject: str) -> int:
 def list_collections() -> list[str]:
 
     client = get_client()
-
-    return [
-        c.name
-        for c in client.list_collections()
-    ]
+    return [c.name for c in client.list_collections()]
 
 
 def delete_collection(name: str) -> bool:
@@ -279,6 +267,5 @@ def delete_collection(name: str) -> bool:
         client = get_client()
         client.delete_collection(name)
         return True
-
     except Exception:
         return False

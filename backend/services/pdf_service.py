@@ -67,10 +67,14 @@ def ingest_pdf(
     unit: str = "General",
     doc_type: str = "notes",    # "notes" | "pyq"
     source_url: str = "",
+    force: bool = False,        # ← Added parameter
 ) -> int:
     """
     Extract → chunk → embed → store one PDF into ChromaDB.
     Returns number of chunks stored.
+    
+    Args:
+        force: If True, re-ingest even if PDF already exists in collection.
     """
     path = Path(pdf_path)
     collection = get_or_create_collection()
@@ -151,6 +155,7 @@ def ingest_folder(folder: str | Path, doc_type: str = "notes") -> dict:
                 unit=unit,
                 doc_type=doc_type,
                 source_url=url,
+                force=True,  # Folder ingestion always forces re-ingest
             )
             total_chunks += chunks
             total_files  += 1
@@ -173,7 +178,8 @@ if __name__ == "__main__":
             pdf_path=sys.argv[1],
             subject=sys.argv[2] if len(sys.argv) > 2 else "Unknown",
             unit=sys.argv[3] if len(sys.argv) > 3 else "General",
+            force="--force" in sys.argv or "-f" in sys.argv,  # Optional CLI flag
         )
         print(f"Ingested {result} chunks.")
     else:
-        print("Usage: python pdf_service.py <path.pdf> [subject] [unit]")
+        print("Usage: python pdf_service.py <path.pdf> [subject] [unit] [--force]")
