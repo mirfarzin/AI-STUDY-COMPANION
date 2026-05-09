@@ -4,11 +4,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+api_key = os.getenv("GROQ_API_KEY")
+if not api_key:
+    print("WARNING: GROQ_API_KEY not set. Chat will not work.")
+    _client = None
+else:
+    _client = Groq(api_key=api_key)
+
 _MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
 
 def chat_with_context(query: str, context_chunks: list[str]) -> str:
+    if _client is None:
+        return {"error": "GROQ_API_KEY not configured"}
+    
     context = "\n\n---\n\n".join(context_chunks)
     prompt = f"""You are a helpful VTU study assistant. Answer the student's question using ONLY the provided notes.
 
@@ -29,6 +38,9 @@ Give a clear, well-structured answer. Use bullet points or numbered lists where 
 
 
 def predict_questions(chunks: list[str]) -> str:
+    if _client is None:
+        return {"error": "GROQ_API_KEY not configured"}
+    
     context = "\n\n".join(chunks[:15])
     prompt = f"""You are a VTU exam expert. Based on the study notes below, generate exactly 10 important questions likely to appear in VTU exams.
 
