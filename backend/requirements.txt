@@ -1,4 +1,4 @@
-fastapi==0.104.1
+﻿fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.12
 numpy==1.26.3
@@ -9,3 +9,4 @@ groq==0.4.2
 httpx==0.25.0
 pypdf2==3.0.0
 sentence-transformers==2.2.2
+beautifulsoup4==4.12.3
