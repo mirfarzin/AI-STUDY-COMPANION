@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-print(f"GROQ: {'SET' if os.getenv('GROQ_API_KEY') else 'NO'} | QDRANT: {'SET' if os.getenv('QDRANT_URL') else 'NO'}")
+# Debug print
+print(f"🔥 ENV CHECK - GROQ: {'✅' if os.getenv('GROQ_API_KEY') else '❌'} | QDRANT: {'✅' if os.getenv('QDRANT_URL') else '❌'}")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
