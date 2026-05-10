@@ -55,6 +55,11 @@ app.include_router(pyq.router)
 app.include_router(sync.router)
 
 # ── HEALTH / STATS ───────────────────────────────────────────────────────────
+@app.get("/ping")
+def ping():
+    """Simple health check - always returns 200 if server is running"""
+    return {"status": "pong"}
+
 @app.get("/")
 def root():
     status = "degraded" if not VECTOR_DB_READY else "running"
