@@ -3,11 +3,23 @@ Qdrant Cloud service - replacement for ChromaDB
 Handles all vector database operations for the VTU Study Companion
 """
 import os
+from qdrant_client import QdrantClient
+
+url = os.getenv("QDRANT_URL")
+api_key = os.getenv("QDRANT_API_KEY")
+
+print(f"Qdrant - URL: {'FOUND' if url else 'MISSING'}, API Key: {'FOUND' if api_key else 'MISSING'}")
+
+if url and api_key:
+    _client = QdrantClient(url=url, api_key=api_key)
+else:
+    _client = None
+    print("WARNING: Qdrant running in degraded mode")
+
 import gc
 from typing import Optional, List, Dict
 import uuid
 
-from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 from dotenv import load_dotenv
 
@@ -16,7 +28,6 @@ load_dotenv()
 COLLECTION_NAME = "vtu_study_companion"
 VECTOR_SIZE = 384  # all-MiniLM-L6-v2 output dimension
 
-_client: Optional[QdrantClient] = None
 _embedding_model = None
 
 
