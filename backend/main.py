@@ -73,22 +73,23 @@ def ping():
 
 @app.get("/")
 def root():
-    status = "degraded" if not VECTOR_DB_READY else "running"
     return {
         "message": "VTU Study Companion API is running",
-        "status": status,
-        "vector_db": VECTOR_DB_TYPE if VECTOR_DB_READY else "Not initialized",
+        "status": "healthy" if os.getenv("GROQ_API_KEY") else "degraded",
+        "groq_configured": bool(os.getenv("GROQ_API_KEY")),
+        "qdrant_configured": bool(os.getenv("QDRANT_URL")),
         "docs": "/docs",
         "health": "/health"
     }
 
 @app.get("/health")
 def health():
-    status = "healthy" if VECTOR_DB_READY else "degraded"
-    response = {"status": status, "ready": VECTOR_DB_READY}
-    if not VECTOR_DB_READY:
-        response["error"] = VECTOR_DB_ERROR
-    return response
+    return {
+        "status": "healthy",
+        "timestamp": __import__("time").time(),
+        "groq": "configured" if os.getenv("GROQ_API_KEY") else "missing",
+        "qdrant": "configured" if os.getenv("QDRANT_URL") else "missing"
+    }
 
 @app.get("/stats")
 def read_stats():
