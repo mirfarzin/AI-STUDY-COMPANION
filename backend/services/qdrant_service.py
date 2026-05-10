@@ -1,130 +1,81 @@
-import os
+﻿import os, uuid
+from typing import List, Dict, Optional, Any
 from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct
-import uuid
-from typing import List, Dict, Optional
+from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, MatchValue, FieldCondition
+
+# PUBLIC EXPORTS (for imports from other modules)
+COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "vtu_study_companion")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 
 _client = None
-COLLECTION_NAME = "vtu_study_companion"
+_embedding_model = None
+
+def _get_embedding_fn():
+    global _embedding_model
+    if _embedding_model is None:
+        from fastembed import TextEmbedding
+        _embedding_model = TextEmbedding(model_name=EMBEDDING_MODEL)
+    return _embedding_model
 
 def get_qdrant_client():
     global _client
     if _client is None:
-        url = os.getenv("QDRANT_URL")
-        api_key = os.getenv("QDRANT_API_KEY")
-        if url and api_key:
-            _client = QdrantClient(url=url, api_key=api_key)
-            print("✅ Qdrant connected")
-        else:
-            print("⚠️ Qdrant disabled")
-            _client = None
+        url, key = os.getenv("QDRANT_URL"), os.getenv("QDRANT_API_KEY")
+        if url and key:
+            try:
+                _client = QdrantClient(url=url, api_key=key, timeout=10)
+                print("✅ Qdrant connected")
+            except: _client = None
     return _client
 
 def get_or_create_collection():
     client = get_qdrant_client()
-    if not client:
-        return None
+    if not client: return None
     try:
-        from qdrant_client.models import VectorParams, Distance
-        collections = client.get_collections()
-        if not any(c.name == COLLECTION_NAME for c in collections.collections):
-            client.create_collection(
-                collection_name=COLLECTION_NAME,
-                vectors_config=VectorParams(size=384, distance=Distance.COSINE)
-            )
+        if not any(c.name == COLLECTION_NAME for c in client.get_collections().collections):
+            client.create_collection(collection_name=COLLECTION_NAME, vectors_config=VectorParams(size=384, distance=Distance.COSINE))
         return client
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
+    except: return None
 
 def add_chunks(chunks: List[str], metadatas: List[Dict]) -> int:
-    client = get_qdrant_client()
-    if not client:
-        return 0
-    from chromadb.utils import embedding_functions
-    embedding_fn = embedding_functions.DefaultEmbeddingFunction()
-    points = []
-    for i, (chunk, meta) in enumerate(zip(chunks, metadatas)):
-        embedding = embedding_fn([chunk])[0]
-        points.append(PointStruct(
-            id=str(uuid.uuid4()),
-            vector=embedding,
-            payload={"text": chunk, **meta}
-        ))
+    client = get_or_create_collection()
+    if not client: return 0
+    embed_fn = _get_embedding_fn()
+    points = [PointStruct(id=str(uuid.uuid4()), vector=emb.tolist(), payload={"text": t, **m}) for t, m, emb in zip(chunks, metadatas, embed_fn.embed(chunks))]
     client.upsert(collection_name=COLLECTION_NAME, points=points)
     return len(points)
 
-def semantic_search(query: str, n_results: int = 5, subject=None, unit=None, doc_type=None):
+def semantic_search(query: str, n_results: int = 5, subject: Optional[str] = None, unit: Optional[str] = None, doc_type: Optional[str] = None) -> List[Dict]:
     client = get_qdrant_client()
-    if not client:
-        return []
-    from chromadb.utils import embedding_functions
-    embedding_fn = embedding_functions.DefaultEmbeddingFunction()
-    query_embedding = embedding_fn([query])[0]
-    results = client.search(
-        collection_name=COLLECTION_NAME,
-        query_vector=query_embedding,
-        limit=n_results
-    )
-    output = []
-    for r in results:
-        output.append({
-            "text": r.payload.get("text", ""),
-            "subject": r.payload.get("subject", ""),
-            "unit": r.payload.get("unit", ""),
-            "doc_type": r.payload.get("doc_type", ""),
-            "filename": r.payload.get("filename", ""),
-            "score": r.score
-        })
-    return output
+    if not client: return []
+    embed_fn = _get_embedding_fn()
+    q_emb = embed_fn.embed([query])[0].tolist()
+    filters = [FieldCondition(key=k, match=MatchValue(v)) for k, v in [("subject", subject), ("unit", unit), ("doc_type", doc_type)] if v]
+    results = client.search(collection_name=COLLECTION_NAME, query_vector=q_emb, query_filter=Filter(must=filters) if filters else None, limit=n_results, with_payload=True)
+    return [{"text": r.payload.get("text",""), "subject": r.payload.get("subject",""), "unit": r.payload.get("unit",""), "doc_type": r.payload.get("doc_type",""), "filename": r.payload.get("filename",""), "score": r.score} for r in results]
 
-def get_all_chunks(where: dict = None):
+def get_all_chunks(where: Optional[Dict] = None) -> List[Dict]:
     client = get_qdrant_client()
-    if not client:
-        return []
-    scroll_result = client.scroll(collection_name=COLLECTION_NAME, limit=10000)
-    output = []
-    for point in scroll_result[0]:
-        payload = point.payload
-        text = payload.pop("text", "")
-        output.append({
-            "text": text,
-            "metadata": payload
-        })
-    return output
+    if not client: return []
+    out, offset = [], None
+    while True:
+        pts, offset = client.scroll(collection_name=COLLECTION_NAME, limit=1000, offset=offset, with_payload=True)
+        for p in pts: out.append({"text": p.payload.get("text",""), "metadata": {k:v for k,v in p.payload.items() if k!="text"}})
+        if not offset: break
+    return out
 
-def get_collection_stats():
+def get_collection_stats() -> Dict:
     client = get_qdrant_client()
-    if not client:
-        return {"total_chunks": 0, "subjects": [], "doc_types": {}}
-    count = client.count(collection_name=COLLECTION_NAME).count
-    return {"total_chunks": count, "subjects": [], "doc_types": {}}
+    if not client: return {"total_chunks": 0, "subjects": [], "doc_types": {}}
+    try: return {"total_chunks": client.count(collection_name=COLLECTION_NAME).count, "subjects": [], "doc_types": {}}
+    except: return {"total_chunks": 0, "subjects": [], "doc_types": {}}
 
-def delete_subject(subject: str):
+def delete_subject(subject: str) -> int:
     client = get_qdrant_client()
-    if not client:
-        return 0
-    scroll = client.scroll(collection_name=COLLECTION_NAME, limit=10000)
-    ids_to_delete = []
-    for point in scroll[0]:
-        if point.payload.get("subject") == subject:
-            ids_to_delete.append(point.id)
-    if ids_to_delete:
-        client.delete(collection_name=COLLECTION_NAME, points_selector=ids_to_delete)
-    return len(ids_to_delete)
+    if not client: return 0
+    try: client.delete(collection_name=COLLECTION_NAME, points_selector=Filter(must=[FieldCondition(key="subject", match=MatchValue(value=subject))])); return 1
+    except: return 0
 
-def query_chunks(query: str, n_results: int = 5, where: dict = None):
-    return semantic_search(query, n_results)
-
-def list_collections():
-    return [COLLECTION_NAME]
-
-def delete_collection(name: str):
-    client = get_qdrant_client()
-    if not client:
-        return False
-    try:
-        client.delete_collection(collection_name=COLLECTION_NAME)
-        return True
-    except:
-        return False
+def query_chunks(q: str, n: int = 5, where: Optional[Dict] = None) -> List[Dict]: return semantic_search(q, n)
+def list_collections() -> List[str]: c = get_qdrant_client(); return [x.name for x in c.get_collections().collections] if c else []
+def delete_collection(name: str) -> bool: c = get_qdrant_client(); return c.delete_collection(collection_name=name) if c else False
