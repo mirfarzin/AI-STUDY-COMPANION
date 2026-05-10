@@ -1,10 +1,11 @@
 """
 backend/services/pdf_service.py
 PDF ingestion pipeline:
-  PDF file → extract text → chunk → embed → store in ChromaDB
+  PDF file → extract text → chunk → embed → store in Qdrant
 Also handles folder-level batch ingestion (used by sync route).
 """
 
+import gc
 import json
 import re
 import uuid
@@ -12,7 +13,12 @@ from pathlib import Path
 from typing import Optional
 
 import fitz  # PyMuPDF
-from services.qdrant_service import get_or_create_collection
+from services.qdrant_service import (
+    get_or_create_collection,
+    add_chunks as qdrant_add_chunks,
+    get_all_chunks,
+    COLLECTION_NAME,
+)
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 CHUNK_SIZE    = 800    # characters per chunk
@@ -21,12 +27,21 @@ CHUNK_OVERLAP = 150    # overlap between chunks
 
 # ── TEXT EXTRACTION ───────────────────────────────────────────────────────────
 
-def extract_text_from_pdf(pdf_path: str | Path) -> str:
-    """Extract raw text from a PDF using PyMuPDF."""
-    path = Path(pdf_path)
-    if not path.exists():
-        raise FileNotFoundError(f"PDF not found: {path}")
-    doc = fitz.open(str(path))
+def extract_text_from_pdf(pdf_path_or_bytes) -> str:
+    """Extract raw text from a PDF using PyMuPDF.
+    
+    Args:
+        pdf_path_or_bytes: Either a file path (str/Path) or raw bytes content.
+    """
+    if isinstance(pdf_path_or_bytes, (str, Path)):
+        path = Path(pdf_path_or_bytes)
+        if not path.exists():
+            raise FileNotFoundError(f"PDF not found: {path}")
+        doc = fitz.open(str(path))
+    else:
+        # Handle raw bytes (from upload route)
+        doc = fitz.open(stream=pdf_path_or_bytes, filetype="pdf")
+    
     pages = []
     for page_num, page in enumerate(doc):
         text = page.get_text("text")
@@ -67,24 +82,29 @@ def ingest_pdf(
     unit: str = "General",
     doc_type: str = "notes",    # "notes" | "pyq"
     source_url: str = "",
-    force: bool = False,        # ← Added parameter
+    force: bool = False,
 ) -> int:
     """
-    Extract → chunk → embed → store one PDF into ChromaDB.
+    Extract → chunk → embed → store one PDF into Qdrant.
     Returns number of chunks stored.
     
     Args:
         force: If True, re-ingest even if PDF already exists in collection.
     """
     path = Path(pdf_path)
-    collection = get_or_create_collection()
+    
+    # Ensure Qdrant collection exists
+    get_or_create_collection()
 
     # Check if already ingested (by source path)
     if not force:
-        existing = collection.get(where={"source_path": str(path)})
-        if existing and existing["ids"]:
-            print(f"  [SKIP] Already indexed: {path.name}")
-            return 0
+        try:
+            existing = get_all_chunks(where={"source_path": {"$eq": str(path)}})
+            if existing:
+                print(f"  [SKIP] Already indexed: {path.name}")
+                return 0
+        except Exception:
+            pass  # If check fails, proceed with ingestion
 
     print(f"  [INGEST] {path.name} | {subject} | {unit}")
     raw_text = extract_text_from_pdf(path)
@@ -96,25 +116,26 @@ def ingest_pdf(
     if not chunks:
         return 0
 
-    ids, docs, metas = [], [], []
+    # Build metadata for each chunk
+    metas = []
     for i, chunk in enumerate(chunks):
-        chunk_id = f"{path.stem}_{uuid.uuid4().hex[:8]}_{i}"
-        ids.append(chunk_id)
-        docs.append(chunk)
         metas.append({
             "subject":     subject,
             "unit":        unit,
-            "doc_type":    doc_type,        # notes | pyq
+            "doc_type":    doc_type,
             "filename":    path.name,
             "source_path": str(path),
-            "source_url":  source_url,
             "chunk_index": i,
             "total_chunks": len(chunks),
         })
 
-    # ChromaDB auto-embeds via its default embedding function
-    collection.add(ids=ids, documents=docs, metadatas=metas)
-    print(f"  [OK]    {len(chunks)} chunks → ChromaDB")
+    # Add to Qdrant using the service function
+    added = qdrant_add_chunks(COLLECTION_NAME, chunks, metas)
+    print(f"  [OK]    {added} chunks → Qdrant Cloud")
+    
+    # Free memory after ingestion
+    gc.collect()
+    
     return len(chunks)
 
 
@@ -163,6 +184,9 @@ def ingest_folder(folder: str | Path, doc_type: str = "notes") -> dict:
             errors.append({"file": str(pdf_path), "error": str(e)})
             print(f"  [ERROR] {pdf_path.name}: {e}")
 
+    # Clean up memory after batch ingestion
+    gc.collect()
+
     return {
         "files_processed": total_files,
         "total_chunks":    total_chunks,
@@ -178,7 +202,7 @@ if __name__ == "__main__":
             pdf_path=sys.argv[1],
             subject=sys.argv[2] if len(sys.argv) > 2 else "Unknown",
             unit=sys.argv[3] if len(sys.argv) > 3 else "General",
-            force="--force" in sys.argv or "-f" in sys.argv,  # Optional CLI flag
+            force="--force" in sys.argv or "-f" in sys.argv,
         )
         print(f"Ingested {result} chunks.")
     else:

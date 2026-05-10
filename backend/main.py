@@ -3,6 +3,11 @@ backend/main.py
 FastAPI application entry point for VTU Study Companion.
 """
 import os
+import gc
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +18,7 @@ from routes import upload, chat, predict, pyq, sync
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 VECTOR_DB_READY = False
+VECTOR_DB_TYPE = "Not initialized"
 VECTOR_DB_ERROR = None
 
 try:
@@ -40,7 +46,7 @@ allowed_origins = [u.strip() for u in FRONTEND_URLS.split(",") if u.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],  # Allow all origins for now (Railway + Vercel)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -74,7 +80,7 @@ def root():
 @app.get("/health")
 def health():
     status = "healthy" if VECTOR_DB_READY else "degraded"
-    response = {"status": status}
+    response = {"status": status, "ready": VECTOR_DB_READY}
     if not VECTOR_DB_READY:
         response["error"] = VECTOR_DB_ERROR
     return response
@@ -94,11 +100,11 @@ def read_stats():
             status_code=500,
             detail=f"Failed to retrieve stats: {str(e)}"
         )
-@app.get("/health")
-def health():
-    return {"status": "ok", "ready": True}
 
 @app.on_event("startup")
 async def startup():
     print("✅ Server started successfully")
-    print(f"Port: {os.getenv('PORT', 8000)}")
+    print(f"   Port: {os.getenv('PORT', 8000)}")
+    print(f"   Vector DB: {VECTOR_DB_TYPE if VECTOR_DB_READY else 'NOT READY - ' + str(VECTOR_DB_ERROR)}")
+    # Force garbage collection on startup to free init memory
+    gc.collect()

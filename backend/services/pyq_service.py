@@ -2,9 +2,9 @@
 pyq_service.py — PYQ (Previous Year Questions) Analysis
 
 Algorithm:
-1. Pull all chunks from every ChromaDB collection (each = one uploaded PDF).
+1. Pull all chunks with doc_type="pyq" from Qdrant.
 2. Extract question-like sentences using regex heuristics (?, VTU keywords).
-3. Embed all extracted questions using the same all-MiniLM-L6-v2 model.
+3. Embed all extracted questions using all-MiniLM-L6-v2 model.
 4. Greedy-cluster similar questions (cosine sim >= threshold).
 5. Count unique documents each cluster appears in → frequency.
 6. Infer "year" from the document name using a 4-digit year regex.
@@ -12,19 +12,19 @@ Algorithm:
 """
 
 import re
-from sentence_transformers import SentenceTransformer, util
 
-from services.qdrant_service import list_collections, get_all_chunks
+from services.qdrant_service import get_all_chunks
 
 # ---------------------------------------------------------------------------
 # Model — loaded lazily on first call so startup isn't blocked
 # ---------------------------------------------------------------------------
-_model: SentenceTransformer | None = None
+_model = None
 
 
-def _get_model() -> SentenceTransformer:
+def _get_model():
     global _model
     if _model is None:
+        from sentence_transformers import SentenceTransformer
         _model = SentenceTransformer("all-MiniLM-L6-v2")
     return _model
 
@@ -91,11 +91,10 @@ def _probability(freq: int) -> str:
 
 def analyze_pyqs(
     similarity_threshold: float = 0.78,
-    chunks_per_doc: int = 80,
     max_results: int = 50,
 ) -> list[dict]:
     """
-    Analyze all uploaded PYQ PDFs for repeated questions.
+    Analyze all PYQ chunks in Qdrant for repeated questions.
 
     Returns a list of dicts, sorted by frequency (descending):
       {
@@ -105,23 +104,25 @@ def analyze_pyqs(
         "probability": str,   # "High" | "Medium" | "Low"
       }
     """
-    collections = list_collections()
-    if not collections:
+    # Get all chunks with doc_type="pyq" from Qdrant
+    pyq_chunks = get_all_chunks(where={"doc_type": {"$eq": "pyq"}})
+    if not pyq_chunks:
         return []
 
     # Step 1 — gather all question candidates
     candidates: list[dict] = []  # {text, doc_id, year}
-    for doc_id in collections:
+    for chunk_data in pyq_chunks:
+        meta = chunk_data.get("metadata", {})
+        doc_id = meta.get("filename", "unknown")
         year = _extract_year(doc_id)
-        chunks = get_all_chunks(doc_id, limit=chunks_per_doc)
-        for chunk in chunks:
-            for q in _extract_questions(chunk):
-                candidates.append({"text": q, "doc_id": doc_id, "year": year})
+        for q in _extract_questions(chunk_data["text"]):
+            candidates.append({"text": q, "doc_id": doc_id, "year": year})
 
     if not candidates:
         return []
 
     # Step 2 — embed all candidates
+    from sentence_transformers import util
     model = _get_model()
     texts = [c["text"] for c in candidates]
     embeddings = model.encode(texts, convert_to_tensor=True, show_progress_bar=False)
