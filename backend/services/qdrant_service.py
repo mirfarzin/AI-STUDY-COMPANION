@@ -79,7 +79,6 @@ def _get_embedding(text: str) -> List[float]:
     except Exception as e:
         print(f"[QDRANT ERROR] Failed to get embedding: {e}")
         return [0.0] * VECTOR_SIZE
-        return [0.0] * VECTOR_SIZE
 
 
 def get_or_create_collection():
