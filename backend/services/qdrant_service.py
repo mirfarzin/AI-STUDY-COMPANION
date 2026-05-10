@@ -13,9 +13,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Qdrant client
-QDRANT_URL = os.getenv("QDRANT_URL")
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 COLLECTION_NAME = "vtu_study_companion"
 VECTOR_SIZE = 384  # all-MiniLM-L6-v2 output dimension
 
@@ -40,13 +37,19 @@ def _get_embedding_model():
 
 
 def get_client() -> Optional[QdrantClient]:
-    """Get or create Qdrant client"""
+    """Get or create Qdrant client (reads env vars lazily at call time)"""
     global _client
 
-    if _client is None and QDRANT_URL and QDRANT_API_KEY:
-        _client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-        # Ensure collection exists
-        _ensure_collection()
+    if _client is None:
+        url = os.getenv("QDRANT_URL")
+        api_key = os.getenv("QDRANT_API_KEY")
+        if url and api_key:
+            _client = QdrantClient(url=url, api_key=api_key)
+            print(f"[QDRANT] Connected to {url}")
+            # Ensure collection exists
+            _ensure_collection()
+        else:
+            print(f"[QDRANT WARNING] Missing credentials: QDRANT_URL={'set' if url else 'MISSING'}, QDRANT_API_KEY={'set' if api_key else 'MISSING'}")
 
     return _client
 
