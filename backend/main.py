@@ -94,3 +94,11 @@ def read_stats():
             status_code=500,
             detail=f"Failed to retrieve stats: {str(e)}"
         )
+@app.get("/health")
+def health():
+    return {"status": "ok", "ready": True}
+
+@app.on_event("startup")
+async def startup():
+    print("✅ Server started successfully")
+    print(f"Port: {os.getenv('PORT', 8000)}")
