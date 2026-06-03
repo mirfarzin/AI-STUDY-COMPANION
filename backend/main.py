@@ -23,14 +23,14 @@ VECTOR_DB_TYPE = "Not initialized"
 VECTOR_DB_ERROR = None
 
 try:
-    from services.qdrant_service import get_client, get_collection_stats
-    # get_client() reads QDRANT_URL and QDRANT_API_KEY from env at call time
+    from services.qdrant_service import get_qdrant_client, get_collection_stats
+    # get_qdrant_client() reads QDRANT_URL and QDRANT_API_KEY from env at call time
     _qdrant_url = os.getenv("QDRANT_URL")
     _qdrant_key = os.getenv("QDRANT_API_KEY")
     print(f"[INIT] QDRANT_URL={'set' if _qdrant_url else 'MISSING'}, QDRANT_API_KEY={'set' if _qdrant_key else 'MISSING'}")
 
     if _qdrant_url and _qdrant_key:
-        if get_client():
+        if get_qdrant_client():
             VECTOR_DB_READY = True
             VECTOR_DB_TYPE = "Qdrant Cloud"
         else:
