@@ -94,12 +94,7 @@ async def get_documents():
 
 from services.qdrant_service import get_collection_stats, delete_subject
 
-@router.get("/subjects")
-async def get_subjects():
-    stats = get_collection_stats()
-    return {
-        "subjects": stats.get("subjects", [])
-    }
+
 
 
 @router.delete("/subject/{subject}")
