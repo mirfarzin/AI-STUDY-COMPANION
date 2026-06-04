@@ -24,8 +24,10 @@ def get_qdrant_client():
         if url and key:
             try:
                 _client = QdrantClient(url=url, api_key=key, timeout=10)
-                print("✅ Qdrant connected")
-            except: _client = None
+                print("[OK] Qdrant connected")
+            except Exception as e:
+                print(f"[ERROR] Qdrant connection failed: {e}")
+                _client = None
     return _client
 
 def get_or_create_collection():
@@ -35,7 +37,9 @@ def get_or_create_collection():
         if not any(c.name == COLLECTION_NAME for c in client.get_collections().collections):
             client.create_collection(collection_name=COLLECTION_NAME, vectors_config=VectorParams(size=384, distance=Distance.COSINE))
         return client
-    except: return None
+    except Exception as e:
+        print(f"[ERROR] Qdrant collection creation failed: {e}")
+        return None
 
 import hashlib
 
