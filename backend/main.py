@@ -85,29 +85,9 @@ def root():
 @app.get("/health")
 def health():
     groq_ok = bool(os.getenv("GROQ_API_KEY"))
-    qdrant_url = os.getenv("QDRANT_URL")
-    qdrant_key = os.getenv("QDRANT_API_KEY")
-    qdrant_ok = bool(qdrant_url and qdrant_key)
-
-    if groq_ok and qdrant_ok:
-        status = "healthy"
-        error = None
-    elif not qdrant_ok:
-        status = "degraded"
-        error = "Qdrant credentials (QDRANT_URL, QDRANT_API_KEY) not configured"
-    else:
-        status = "degraded"
-        error = "GROQ_API_KEY not configured"
-
-    response = {
-        "status": status,
-        "ready": status == "healthy",
-        "groq": "configured" if groq_ok else "missing",
-        "qdrant": "configured" if qdrant_ok else "missing",
-    }
-    if error:
-        response["error"] = error
-    return response
+    qdrant_ok = bool(os.getenv("QDRANT_URL") and os.getenv("QDRANT_API_KEY"))
+    status = "healthy" if (groq_ok and qdrant_ok) else "degraded"
+    return {"status": status, "ready": status == "healthy", "groq": "configured" if groq_ok else "missing", "qdrant": "configured" if qdrant_ok else "missing"}
 
 @app.get("/stats")
 def read_stats():
@@ -170,10 +150,4 @@ def get_subjects():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8080))
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=port,
-        reload=False
-    )
-    gc.collect()
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=False)
