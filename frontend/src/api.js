@@ -1,28 +1,53 @@
 import axios from 'axios'
 
-// In production (Vercel), use the VITE_API_URL env var pointing to Railway backend.
-// In dev, Vite proxy handles it (no baseURL needed), but we fall back to localhost.
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || ''
+// Get API base URL from environment or use Railway production URL
+const API_BASE = import.meta.env.VITE_API_URL || 'https://ai-study-companion.up.railway.app'
 
+// Create axios instance with timeout and headers
+const api = axios.create({
+  baseURL: API_BASE,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// Response interceptor for error handling
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      url: error.config?.url
+    })
+    return Promise.reject(error)
+  }
+)
+
+export default api
+export { API_BASE }
+
+// API methods
 export const uploadPDF = (file, onProgress) => {
   const form = new FormData()
   form.append('file', file)
-  return axios.post('/upload', form, {
+  return api.post('/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (e) => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   })
 }
 
-export const fetchSubjects = () => axios.get('/subjects')
+export const fetchSubjects = () => api.get('/subjects')
 
-export const deleteSubject = (subject) => axios.delete(`/subject/${subject}`)
+export const deleteSubject = (subject) => api.delete(`/subject/${subject}`)
 
 export const sendChat = (query, subject) =>
-  axios.post('/chat', { query, subject })
+  api.post('/chat', { query, subject })
 
 export const predictQuestions = (subject) =>
-  axios.post('/predict', { subject })
+  api.post('/predict', { subject })
 
-// Analyzes all uploaded PYQ PDFs for repeated questions
 export const fetchPYQPredictions = (threshold = 0.78) =>
-  axios.get('/predict-questions', { params: { threshold } })
+  api.get('/predict-questions', { params: { threshold } })

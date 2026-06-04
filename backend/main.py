@@ -114,3 +114,48 @@ async def startup():
     print(f"   Vector DB: {VECTOR_DB_TYPE if VECTOR_DB_READY else 'NOT READY - ' + str(VECTOR_DB_ERROR)}")
     # Force garbage collection on startup to free init memory
     gc.collect()
+
+
+# ── DEFAULT SUBJECTS ENDPOINT ────────────────────────────────────────────────
+DEFAULT_SUBJECTS = [
+    "CAED",
+    "Chemistry",
+    "Communication English",
+    "Constitution of India",
+    "Design Thinking",
+    "ESC",
+    "ETC",
+    "Kannada Kali Manasu",
+    "Mathematics ChemistryCycle",
+    "Mathematics PhysicsCycle",
+    "PLC",
+    "Physics",
+    "Principles of Programming C",
+    "Professional Writing English"
+]
+
+@app.get("/subjects")
+def get_subjects():
+    """Get all available subjects from Qdrant or return defaults"""
+    try:
+        stats = get_collection_stats()
+        subjects = stats.get("subjects", [])
+        if subjects:
+            return {"subjects": subjects}
+    except Exception as e:
+        print(f"Error fetching subjects from Qdrant: {e}")
+    
+    # Return default subjects if Qdrant is not available
+    return {"subjects": DEFAULT_SUBJECTS}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8080))
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False
+    )
+    gc.collect()
