@@ -65,7 +65,8 @@ def semantic_search(query: str, n_results: int = 5, subject: Optional[str] = Non
     client = get_qdrant_client()
     if not client: return []
     embed_fn = _get_embedding_fn()
-    q_emb = embed_fn.embed([query])[0].tolist()
+    embeddings = list(embed_fn.embed([query]))
+    q_emb = embeddings[0].tolist()
     filters = [FieldCondition(key=k, match=MatchValue(value=v)) for k, v in [("subject", subject), ("unit", unit), ("doc_type", doc_type)] if v]
     results = client.search(collection_name=COLLECTION_NAME, query_vector=q_emb, query_filter=Filter(must=filters) if filters else None, limit=n_results, with_payload=True)
     return [{"text": r.payload.get("text",""), "subject": r.payload.get("subject",""), "unit": r.payload.get("unit",""), "doc_type": r.payload.get("doc_type",""), "filename": r.payload.get("filename",""), "score": r.score} for r in results]
