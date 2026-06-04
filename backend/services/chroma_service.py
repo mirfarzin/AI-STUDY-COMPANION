@@ -7,7 +7,7 @@ All function signatures are preserved so existing imports continue to work.
 """
 
 from services.qdrant_service import (
-    get_client,
+    get_qdrant_client as get_client,
     get_or_create_collection,
     add_chunks,
     semantic_search,
@@ -17,9 +17,12 @@ from services.qdrant_service import (
     delete_subject,
     list_collections,
     delete_collection,
-    reset_collection,
     COLLECTION_NAME,
 )
+
+def reset_collection():
+    """Stub — collection reset not implemented for Qdrant shim."""
+    return False
 
 __all__ = [
     "get_client",

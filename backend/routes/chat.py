@@ -43,7 +43,7 @@ async def chat(req: ChatRequest):
 
     where_clause = {"subject": {"$eq": req.subject}} if req.subject else None
 
-    chunk_results = query_chunks(req.query, n_results=5, where=where_clause)
+    chunk_results = query_chunks(req.query, n=5, where=where_clause)
 
     if not chunk_results:
         raise HTTPException(status_code=404, detail="No relevant content found for this subject.")
@@ -53,7 +53,7 @@ async def chat(req: ChatRequest):
 
     citations = [
         {
-            "source": c.get("metadata", {}).get("filename", "Unknown Document"),
+            "source": c.get("filename") or c.get("subject") or "Unknown Document",
             "type": "PDF Notes",
             "similarity": _distance_to_similarity(c["score"]),
         }
@@ -68,7 +68,21 @@ async def chat(req: ChatRequest):
             seen[key] = cit
     unique_citations = sorted(seen.values(), key=lambda x: -x["similarity"])
 
-    answer = chat_with_context(req.query, texts)
+    context_text = "\n\n---\n\n".join(texts)
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful VTU study assistant. Answer questions based on the provided study notes context. "
+                "Be concise, accurate, and cite the subject when relevant."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"Context from study notes:\n\n{context_text}\n\nQuestion: {req.query}",
+        },
+    ]
+    answer = chat_with_context(messages)
 
     return {
         "answer": answer,

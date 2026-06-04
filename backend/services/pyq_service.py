@@ -4,19 +4,21 @@ pyq_service.py — PYQ (Previous Year Questions) Analysis
 Algorithm:
 1. Pull all chunks with doc_type="pyq" from Qdrant.
 2. Extract question-like sentences using regex heuristics (?, VTU keywords).
-3. Embed all extracted questions using all-MiniLM-L6-v2 model.
+3. Embed all extracted questions using fastembed (already installed for Qdrant).
 4. Greedy-cluster similar questions (cosine sim >= threshold).
 5. Count unique documents each cluster appears in → frequency.
 6. Infer "year" from the document name using a 4-digit year regex.
-7. Assign probability label: High (freq≥3), Medium (2), Low (1).
+7. Assign probability label: High (freq>=3), Medium (2), Low (1).
 """
 
 import re
+import numpy as np
 
 from services.qdrant_service import get_all_chunks
 
 # ---------------------------------------------------------------------------
 # Model — loaded lazily on first call so startup isn't blocked
+# Uses fastembed (already installed) to avoid adding torch/sentence-transformers
 # ---------------------------------------------------------------------------
 _model = None
 
@@ -24,8 +26,8 @@ _model = None
 def _get_model():
     global _model
     if _model is None:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        from fastembed import TextEmbedding
+        _model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
     return _model
 
 
@@ -77,6 +79,14 @@ def _extract_questions(chunk: str) -> list[str]:
     return questions
 
 
+def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
+    """Compute cosine similarity between two 1-D numpy arrays."""
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    if denom == 0:
+        return 0.0
+    return float(np.dot(a, b) / denom)
+
+
 def _probability(freq: int) -> str:
     if freq >= 3:
         return "High"
@@ -121,11 +131,10 @@ def analyze_pyqs(
     if not candidates:
         return []
 
-    # Step 2 — embed all candidates
-    from sentence_transformers import util
+    # Step 2 — embed all candidates using fastembed
     model = _get_model()
     texts = [c["text"] for c in candidates]
-    embeddings = model.encode(texts, convert_to_tensor=True, show_progress_bar=False)
+    embeddings = list(model.embed(texts))  # list of numpy arrays
 
     # Step 3 — greedy clustering
     n = len(candidates)
@@ -140,7 +149,7 @@ def analyze_pyqs(
         for j in range(i + 1, n):
             if assigned[j]:
                 continue
-            sim = float(util.cos_sim(embeddings[i], embeddings[j]))
+            sim = _cosine_sim(embeddings[i], embeddings[j])
             if sim >= similarity_threshold:
                 cluster.append(j)
                 assigned[j] = True

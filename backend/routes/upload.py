@@ -65,7 +65,17 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     doc_id = _sanitize(file.filename)
 
-    add_chunks(doc_id, chunks)
+    metadatas = [
+        {
+            "subject": "Uploaded",
+            "unit": "General",
+            "doc_type": "notes",
+            "filename": file.filename,
+            "chunk_index": i,
+        }
+        for i in range(len(chunks))
+    ]
+    add_chunks(chunks, metadatas)
 
     return {
         "doc_id": doc_id,

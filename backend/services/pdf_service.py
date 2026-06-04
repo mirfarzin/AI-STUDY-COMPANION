@@ -17,7 +17,6 @@ from services.qdrant_service import (
     get_or_create_collection,
     add_chunks as qdrant_add_chunks,
     get_all_chunks,
-    COLLECTION_NAME,
 )
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
@@ -130,7 +129,7 @@ def ingest_pdf(
         })
 
     # Add to Qdrant using the service function
-    added = qdrant_add_chunks(COLLECTION_NAME, chunks, metas)
+    added = qdrant_add_chunks(chunks, metas)
     print(f"  [OK]    {added} chunks → Qdrant Cloud")
     
     # Free memory after ingestion

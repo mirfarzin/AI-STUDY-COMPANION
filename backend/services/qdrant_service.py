@@ -1,4 +1,4 @@
-﻿import os, uuid
+import os, uuid
 from typing import List, Dict, Optional, Any
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, MatchValue, FieldCondition
@@ -50,7 +50,7 @@ def semantic_search(query: str, n_results: int = 5, subject: Optional[str] = Non
     if not client: return []
     embed_fn = _get_embedding_fn()
     q_emb = embed_fn.embed([query])[0].tolist()
-    filters = [FieldCondition(key=k, match=MatchValue(v)) for k, v in [("subject", subject), ("unit", unit), ("doc_type", doc_type)] if v]
+    filters = [FieldCondition(key=k, match=MatchValue(value=v)) for k, v in [("subject", subject), ("unit", unit), ("doc_type", doc_type)] if v]
     results = client.search(collection_name=COLLECTION_NAME, query_vector=q_emb, query_filter=Filter(must=filters) if filters else None, limit=n_results, with_payload=True)
     return [{"text": r.payload.get("text",""), "subject": r.payload.get("subject",""), "unit": r.payload.get("unit",""), "doc_type": r.payload.get("doc_type",""), "filename": r.payload.get("filename",""), "score": r.score} for r in results]
 
@@ -96,6 +96,8 @@ def delete_subject(subject: str) -> int:
     try: client.delete(collection_name=COLLECTION_NAME, points_selector=Filter(must=[FieldCondition(key="subject", match=MatchValue(value=subject))])); return 1
     except: return 0
 
-def query_chunks(q: str, n: int = 5, where: Optional[Dict] = None) -> List[Dict]: return semantic_search(q, n)
+def query_chunks(q: str, n: int = 5, where: Optional[Dict] = None) -> List[Dict]:
+    subject = where.get("subject", {}).get("$eq") if where else None
+    return semantic_search(q, n, subject=subject)
 def list_collections() -> List[str]: c = get_qdrant_client(); return [x.name for x in c.get_collections().collections] if c else []
 def delete_collection(name: str) -> bool: c = get_qdrant_client(); return c.delete_collection(collection_name=name) if c else False

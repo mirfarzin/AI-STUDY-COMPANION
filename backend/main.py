@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Debug print
-print(f"🔥 ENV CHECK - GROQ: {'✅' if os.getenv('GROQ_API_KEY') else '❌'} | QDRANT: {'✅' if os.getenv('QDRANT_URL') else '❌'}")
+# Debug print (ASCII-safe for Windows console compatibility)
+print(f"[ENV] GROQ: {'OK' if os.getenv('GROQ_API_KEY') else 'MISSING'} | QDRANT: {'OK' if os.getenv('QDRANT_URL') else 'MISSING'}")
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -84,12 +84,30 @@ def root():
 
 @app.get("/health")
 def health():
-    return {
-        "status": "healthy",
-        "timestamp": __import__("time").time(),
-        "groq": "configured" if os.getenv("GROQ_API_KEY") else "missing",
-        "qdrant": "configured" if os.getenv("QDRANT_URL") else "missing"
+    groq_ok = bool(os.getenv("GROQ_API_KEY"))
+    qdrant_url = os.getenv("QDRANT_URL")
+    qdrant_key = os.getenv("QDRANT_API_KEY")
+    qdrant_ok = bool(qdrant_url and qdrant_key)
+
+    if groq_ok and qdrant_ok:
+        status = "healthy"
+        error = None
+    elif not qdrant_ok:
+        status = "degraded"
+        error = "Qdrant credentials (QDRANT_URL, QDRANT_API_KEY) not configured"
+    else:
+        status = "degraded"
+        error = "GROQ_API_KEY not configured"
+
+    response = {
+        "status": status,
+        "ready": status == "healthy",
+        "groq": "configured" if groq_ok else "missing",
+        "qdrant": "configured" if qdrant_ok else "missing",
     }
+    if error:
+        response["error"] = error
+    return response
 
 @app.get("/stats")
 def read_stats():

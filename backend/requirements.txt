@@ -1,17 +1,25 @@
+# Core framework
 fastapi==0.111.0
 uvicorn[standard]==0.30.0
 pydantic==2.7.1
 python-multipart==0.0.9
 python-dotenv==1.0.1
-chromadb==0.5.0
+
+# Qdrant vector DB + embeddings
 qdrant-client==1.9.0
 fastembed==0.3.6
-groq==0.4.2
-pymupdf==1.23.8
-httpx==0.25.0
-pypdf2==3.0.0
-beautifulsoup4==4.12.3
-requests==2.31.0
-numpy==1.26.3
 
-python-dotenv==1.0.1
+# LLM
+groq==0.4.2
+
+# PDF processing
+pymupdf==1.23.8
+pypdf2==3.0.0
+
+# Web scraping
+beautifulsoup4==4.12.3
+httpx==0.25.0
+requests==2.31.0
+
+# Utilities
+numpy==1.26.3

@@ -16,14 +16,18 @@ def get_groq_client():
             _client = None
     return _client
 
+def _get_model() -> str:
+    """Get model name from env var, with a safe default."""
+    return os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
 def chat_with_context(messages: List[Dict]) -> str:
-    """Chat with context for RAG"""
+    """Chat with context for RAG. messages should be a list of {role, content} dicts."""
     client = get_groq_client()
     if not client:
         return "Error: GROQ_API_KEY not configured"
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=_get_model(),
             messages=messages,
             temperature=0.7
         )
@@ -44,7 +48,7 @@ def predict_questions(subject: str, unit: str = None, num_questions: int = 5) ->
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=_get_model(),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
@@ -65,7 +69,7 @@ def chat_with_subject(query: str, subject: str, context: str) -> str:
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=_get_model(),
             messages=messages,
             temperature=0.5
         )
