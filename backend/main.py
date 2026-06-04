@@ -127,8 +127,8 @@ def read_stats():
 
 @app.on_event("startup")
 async def startup():
-    print("✅ Server started successfully")
-    print(f"   Port: {os.getenv('PORT', 8000)}")
+    print("Server started successfully")
+    print(f"   Port: {os.getenv('PORT', 8080)}")
     print(f"   Vector DB: {VECTOR_DB_TYPE if VECTOR_DB_READY else 'NOT READY - ' + str(VECTOR_DB_ERROR)}")
     # Force garbage collection on startup to free init memory
     gc.collect()
