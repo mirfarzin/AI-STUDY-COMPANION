@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
-from routes import upload, chat, predict, pyq, sync
+from routes import upload, chat, predict, pyq, sync, quiz, weak_topics
 
 # ── QDRANT CLOUD INITIALIZATION ───────────────────────────────────────────────
 VECTOR_DB_READY = False
@@ -64,6 +64,8 @@ app.include_router(chat.router)
 app.include_router(predict.router)
 app.include_router(pyq.router)
 app.include_router(sync.router)
+app.include_router(quiz.router)
+app.include_router(weak_topics.router)
 
 # ── HEALTH / STATS ───────────────────────────────────────────────────────────
 @app.get("/ping")

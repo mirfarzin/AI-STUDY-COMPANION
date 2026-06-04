@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import ChatPane from './components/ChatPane'
 import PredictPane from './components/PredictPane'
+import PYQPane from './components/PYQPane'
+import QuizPane from './components/QuizPane'
 import UploadModal from './components/UploadModal'
 import { fetchSubjects } from './api'
-import { MessageSquare, Sparkles, AlertCircle, RefreshCw } from 'lucide-react'
+import { MessageSquare, Sparkles, AlertCircle, RefreshCw, BookOpen, Brain } from 'lucide-react'
 
 export default function App() {
   const [subjects, setSubjects] = useState([])
@@ -121,14 +123,36 @@ export default function App() {
             <Sparkles size={15} />
             Predict Questions
           </button>
+          <button
+            onClick={() => setView('pyq')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all ${
+              view === 'pyq'
+                ? 'bg-bg-card text-accent-light border border-b-0 border-bg-border'
+                : 'text-txt-secondary hover:text-txt-primary'
+            }`}
+          >
+            <BookOpen size={15} />
+            PYQ Solver
+          </button>
+          <button
+            onClick={() => setView('quiz')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all ${
+              view === 'quiz'
+                ? 'bg-bg-card text-accent-light border border-b-0 border-bg-border'
+                : 'text-txt-secondary hover:text-txt-primary'
+            }`}
+          >
+            <Brain size={15} />
+            Quiz Me
+          </button>
         </div>
 
         {/* View content */}
         <div className="flex-1 overflow-hidden bg-bg-card">
-          {view === 'chat'
-            ? <ChatPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />
-            : <PredictPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />
-          }
+          {view === 'chat' && <ChatPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />}
+          {view === 'predict' && <PredictPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />}
+          {view === 'pyq' && <PYQPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />}
+          {view === 'quiz' && <QuizPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />}
         </div>
       </div>
 

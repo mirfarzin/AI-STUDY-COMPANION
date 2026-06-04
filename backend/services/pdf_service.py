@@ -20,8 +20,8 @@ from services.qdrant_service import (
 )
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-CHUNK_SIZE    = 800    # characters per chunk
-CHUNK_OVERLAP = 150    # overlap between chunks
+CHUNK_SIZE    = 500    # characters per chunk
+CHUNK_OVERLAP = 50     # overlap between chunks
 
 
 # ── TEXT EXTRACTION ───────────────────────────────────────────────────────────

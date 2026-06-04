@@ -39,3 +39,65 @@ async def predict_questions(
         "summary": {"High": len(high), "Medium": len(medium), "Low": len(low)},
         "questions": results,
     }
+
+from pydantic import BaseModel
+from services.qdrant_service import query_chunks
+from services.groq_service import chat_with_context
+
+class PYQRequest(BaseModel):
+    question: str
+    subject: str = None
+
+@router.post("/api/pyq")
+async def solve_pyq(req: PYQRequest):
+    if not req.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+
+    where_clause = {"subject": {"$eq": req.subject}} if req.subject else None
+    
+    # Top-k=5 chunks
+    chunk_results = query_chunks(req.question, n=5, where=where_clause)
+    
+    if not chunk_results:
+        raise HTTPException(status_code=404, detail="No relevant context found for this question.")
+        
+    texts = [c["text"] for c in chunk_results]
+    
+    sources = [
+        {
+            "subject": c.get("subject", "Unknown"),
+            "filename": c.get("filename", "Unknown Document"),
+            "page": c.get("page", 1),
+            "excerpt": c["text"][:100] + "..." if len(c["text"]) > 100 else c["text"]
+        }
+        for c in chunk_results
+    ]
+    
+    # Deduplicate sources based on filename and excerpt
+    seen = set()
+    unique_sources = []
+    for s in sources:
+        key = f"{s['filename']}_{s['excerpt']}"
+        if key not in seen:
+            seen.add(key)
+            unique_sources.append(s)
+    
+    context_text = "\n\n---\n\n".join(texts)
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful VTU assistant. Answer this VTU PYQ (Previous Year Question) using ONLY the provided context."
+        },
+        {
+            "role": "user",
+            "content": f"Context:\n{context_text}\n\nQuestion: {req.question}"
+        }
+    ]
+    
+    answer = chat_with_context(messages)
+    
+    return {
+        "answer": answer,
+        "sources": unique_sources,
+        "confidence": "High" if len(chunk_results) >= 3 else "Medium"
+    }

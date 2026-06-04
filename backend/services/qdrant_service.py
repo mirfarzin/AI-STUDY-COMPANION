@@ -37,11 +37,23 @@ def get_or_create_collection():
         return client
     except: return None
 
+import hashlib
+
+def _generate_deterministic_uuid(filename: str, chunk_index: int) -> str:
+    hash_hex = hashlib.md5(f"{filename}_{chunk_index}".encode("utf-8")).hexdigest()
+    # format as UUID: 8-4-4-4-12
+    return f"{hash_hex[:8]}-{hash_hex[8:12]}-{hash_hex[12:16]}-{hash_hex[16:20]}-{hash_hex[20:]}"
+
 def add_chunks(chunks: List[str], metadatas: List[Dict]) -> int:
     client = get_or_create_collection()
     if not client: return 0
     embed_fn = _get_embedding_fn()
-    points = [PointStruct(id=str(uuid.uuid4()), vector=emb.tolist(), payload={"text": t, **m}) for t, m, emb in zip(chunks, metadatas, embed_fn.embed(chunks))]
+    points = []
+    for t, m, emb in zip(chunks, metadatas, embed_fn.embed(chunks)):
+        filename = m.get("filename", "unknown")
+        chunk_idx = m.get("chunk_index", 0)
+        point_id = _generate_deterministic_uuid(filename, chunk_idx)
+        points.append(PointStruct(id=point_id, vector=emb.tolist(), payload={"text": t, **m}))
     client.upsert(collection_name=COLLECTION_NAME, points=points)
     return len(points)
 

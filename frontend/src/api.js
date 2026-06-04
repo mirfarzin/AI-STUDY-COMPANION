@@ -51,4 +51,13 @@ export const predictQuestions = (subject) =>
 
 export const fetchPYQPredictions = (threshold = 0.78) =>
   api.get('/predict-questions', { params: { threshold } })
+
+export const solvePYQ = (question, subject) =>
+  api.post('/api/pyq', { question, subject })
+
+export const generateQuiz = (subject, difficulty = "medium", topic = null) =>
+  api.get('/api/quiz', { params: { subject, difficulty, topic } })
+
+export const analyzeWeakTopics = (subject, incorrect_questions) =>
+  api.post('/api/weak-topics', { subject, incorrect_questions })
 "// Redeploy trigger $(Get-Date)" 
