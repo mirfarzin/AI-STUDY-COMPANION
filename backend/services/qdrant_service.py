@@ -66,9 +66,29 @@ def get_all_chunks(where: Optional[Dict] = None) -> List[Dict]:
 
 def get_collection_stats() -> Dict:
     client = get_qdrant_client()
-    if not client: return {"total_chunks": 0, "subjects": [], "doc_types": {}}
-    try: return {"total_chunks": client.count(collection_name=COLLECTION_NAME).count, "subjects": [], "doc_types": {}}
-    except: return {"total_chunks": 0, "subjects": [], "doc_types": {}}
+    if not client: 
+        return {"total_chunks": 0, "subjects": [], "doc_types": {}}
+    try:
+        total = client.count(collection_name=COLLECTION_NAME).count
+        # Extract all unique subjects from chunks
+        subjects = set()
+        offset = None
+        while True:
+            pts, offset = client.scroll(collection_name=COLLECTION_NAME, limit=1000, offset=offset, with_payload=True)
+            for p in pts:
+                subj = p.payload.get("subject")
+                if subj:
+                    subjects.add(subj)
+            if not offset:
+                break
+        return {
+            "total_chunks": total,
+            "subjects": sorted(list(subjects)),
+            "doc_types": {}
+        }
+    except Exception as e:
+        print(f"Error getting collection stats: {e}")
+        return {"total_chunks": 0, "subjects": [], "doc_types": {}}
 
 def delete_subject(subject: str) -> int:
     client = get_qdrant_client()

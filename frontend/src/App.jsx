@@ -4,22 +4,30 @@ import ChatPane from './components/ChatPane'
 import PredictPane from './components/PredictPane'
 import UploadModal from './components/UploadModal'
 import { fetchSubjects } from './api'
-import { MessageSquare, Sparkles } from 'lucide-react'
+import { MessageSquare, Sparkles, AlertCircle, RefreshCw } from 'lucide-react'
 
 export default function App() {
   const [subjects, setSubjects] = useState([])
   const [activeSubject, setActiveSubject] = useState(null)
   const [view, setView] = useState('chat') // 'chat' | 'predict'
   const [showUpload, setShowUpload] = useState(false)
+  const [loadError, setLoadError] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const loadSubjects = async () => {
     try {
+      setIsLoading(true)
+      setLoadError(null)
       const res = await fetchSubjects()
       const subs = res.data.subjects || []
       setSubjects(subs)
       if (subs.length > 0 && !activeSubject) setActiveSubject(subs[0])
     } catch (err) {
       console.error('Failed to load subjects', err)
+      setLoadError(err.response?.data?.detail || 'Failed to connect to backend. Ensure the API is running.')
+      setSubjects([])
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -27,6 +35,54 @@ export default function App() {
 
   const handleDocDeleted = (docId) => {
     loadSubjects() // reload subjects on delete
+  }
+
+  // Show error state if backend is not accessible
+  if (loadError && subjects.length === 0) {
+    return (
+      <div className="flex h-screen overflow-hidden bg-bg-primary">
+        <Sidebar
+          subjects={[]}
+          activeSubject={null}
+          onSelectSubject={() => {}}
+          onUploadClick={() => {}}
+          onDocDeleted={() => {}}
+        />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex items-center gap-1 px-6 pt-5 pb-0 border-b border-bg-border">
+            <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg bg-bg-card text-accent-light border border-b-0 border-bg-border">
+              <MessageSquare size={15} />
+              Chat with Notes
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg text-txt-secondary">
+              <Sparkles size={15} />
+              Predict Questions
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden bg-bg-card flex items-center justify-center">
+            <div className="flex flex-col items-center justify-center gap-6 p-8 max-w-md">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #7c3aed22, #4f46e522)', border: '1px solid #7c3aed44' }}>
+                <AlertCircle size={32} className="text-red-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-txt-primary font-semibold text-lg mb-2">Backend Connection Error</p>
+                <p className="text-txt-secondary text-sm mb-4">{loadError}</p>
+                <p className="text-txt-muted text-xs mb-6">Check that the backend URL is correct and the server is running.</p>
+              </div>
+              <button
+                onClick={loadSubjects}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+              >
+                {isLoading ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                {isLoading ? 'Retrying...' : 'Retry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
