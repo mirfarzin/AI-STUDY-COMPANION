@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Get API base URL from environment or use Railway production URL
-const API_BASE = import.meta.env.VITE_API_URL || 'https://ai-study-companion.up.railway.app'
+const API_BASE = import.meta.env.VITE_API_URL || 'https://ai-study-companion-production-d7af.up.railway.app'
 
 // Create axios instance with timeout and headers
 const api = axios.create({
