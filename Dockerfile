@@ -1,17 +1,8 @@
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install system dependencies needed for pymupdf and sentence-transformers
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libmupdf-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY backend/requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY backend/ .
-
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-keep-alive 30"]
+FROM python:3.11-slim 
+WORKDIR /app 
+COPY backend/requirements.txt . 
+RUN pip install --no-cache-dir -r requirements.txt 
+COPY backend/ ./backend/ 
+WORKDIR /app/backend 
+EXPOSE 8080 
+CMD uvicorn main:app --host 0.0.0.0 --port 8080 
