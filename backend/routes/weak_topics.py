@@ -48,4 +48,4 @@ async def analyze_weaknesses(req: WeakTopicsRequest):
         return analysis
     except Exception as e:
         print(f"Error parsing weak topics JSON: {e}\nRaw output: {response_text}")
-        raise HTTPException(status_code=500, detail="Failed to analyze weak topics.")
+        raise HTTPException(status_code=400, detail="Invalid JSON from LLM")

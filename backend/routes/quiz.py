@@ -63,4 +63,4 @@ async def generate_quiz(subject: str, difficulty: str = "medium", topic: Optiona
         return quiz_data
     except Exception as e:
         print(f"Error parsing quiz JSON from Groq: {e}\nRaw output: {response_text}")
-        raise HTTPException(status_code=500, detail="Failed to generate quiz. The AI produced invalid JSON.")
+        raise HTTPException(status_code=400, detail="Invalid JSON from LLM")
