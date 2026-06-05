@@ -113,7 +113,8 @@ def semantic_search(
         return []
     try:
         embed_fn = _get_embedding_fn()
-        q_emb = list(list(embed_fn.embed([query]))[0])
+        # Convert numpy float32 to python native floats (Qdrant local mode fails silently otherwise)
+        q_emb = [float(x) for x in list(embed_fn.embed([query]))[0]]
         filters = [
             FieldCondition(key=k, match=MatchValue(value=v))
             for k, v in [("subject", subject), ("unit", unit), ("doc_type", doc_type)]
