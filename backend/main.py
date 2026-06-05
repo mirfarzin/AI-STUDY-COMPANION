@@ -77,9 +77,11 @@ def ping():
 def debug_qdrant():
     from services.qdrant_service import get_qdrant_client
     c = get_qdrant_client()
+    cols = [col.name for col in c.get_collections().collections] if c else []
     return {
         "client_type": type(c).__name__ if c else "None",
-        "is_memory": c.location == ":memory:" if c and hasattr(c, "location") else "Unknown",
+        "path": getattr(c._client, "location", None) or getattr(c._client, "_path", None) or "Unknown",
+        "collections": cols
     }
 
 @app.get("/")
