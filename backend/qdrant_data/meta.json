@@ -1,3 +1,1 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:bc22b66f25df5a99575bb4390f3b5899ca6a2d86a76a9b13b8b85ab8426b680b
-size 519
+{"collections": {"vtu_study_companion": {"vectors": {"size": 384, "distance": "Cosine", "hnsw_config": null, "quantization_config": null, "on_disk": null, "datatype": null, "multivector_config": null}, "shard_number": null, "sharding_method": null, "replication_factor": null, "write_consistency_factor": null, "on_disk_payload": null, "hnsw_config": null, "wal_config": null, "optimizers_config": null, "quantization_config": null, "sparse_vectors": null, "strict_mode_config": null, "metadata": null}}, "aliases": {}}
