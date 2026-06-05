@@ -75,16 +75,24 @@ def ping():
 
 @app.get("/debug_qdrant")
 def debug_qdrant():
-    from services.qdrant_service import get_qdrant_client, semantic_search
+    from services.qdrant_service import get_qdrant_client, semantic_search, _get_embedding_fn
     c = get_qdrant_client()
     cols = [col.name for col in c.get_collections().collections] if c else []
     
     search_test = None
     try:
+        embed_fn = _get_embedding_fn()
+        q_emb = list(list(embed_fn.embed(["test query"]))[0])
         results = semantic_search("test query", n_results=2)
+        
+        pts, _ = c.scroll(collection_name="vtu_study_companion", limit=1, with_vectors=True)
+        sample_vec = pts[0].vector if pts and hasattr(pts[0], 'vector') else None
+        
         search_test = {
             "num_results": len(results),
-            "top_score": results[0]["score"] if results else None
+            "q_emb_len": len(q_emb),
+            "sample_vec_len": len(sample_vec) if sample_vec else None,
+            "sample_vec_type": type(sample_vec).__name__ if sample_vec else None
         }
     except Exception as e:
         import traceback
