@@ -75,24 +75,26 @@ def ping():
 
 @app.get("/debug_qdrant")
 def debug_qdrant():
-    from services.qdrant_service import get_qdrant_client
+    from services.qdrant_service import get_qdrant_client, semantic_search
     c = get_qdrant_client()
     cols = [col.name for col in c.get_collections().collections] if c else []
     
-    embed_error = None
+    search_test = None
     try:
-        from fastembed import TextEmbedding
-        embed_fn = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
-        list(embed_fn.embed(["test"]))
+        results = semantic_search("test query", n_results=2)
+        search_test = {
+            "num_results": len(results),
+            "top_score": results[0]["score"] if results else None
+        }
     except Exception as e:
         import traceback
-        embed_error = traceback.format_exc()
+        search_test = traceback.format_exc()
 
     return {
         "client_type": type(c).__name__ if c else "None",
         "path": getattr(c._client, "location", None) or getattr(c._client, "_path", None) or "Unknown",
         "collections": cols,
-        "embed_error": embed_error
+        "search_test": search_test
     }
 
 @app.get("/")
