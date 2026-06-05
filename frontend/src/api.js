@@ -33,7 +33,7 @@ export { API_BASE }
 export const uploadPDF = (file, onProgress) => {
   const form = new FormData()
   form.append('file', file)
-  return api.post('/upload', form, {
+  return api.post('/api/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (e) => onProgress && onProgress(Math.round((e.loaded * 100) / e.total)),
   })
@@ -41,16 +41,16 @@ export const uploadPDF = (file, onProgress) => {
 
 export const fetchSubjects = () => api.get('/subjects')
 
-export const deleteSubject = (subject) => api.delete(`/subject/${subject}`)
+export const deleteSubject = (subject) => api.delete(`/api/subject/${subject}`)
 
 export const sendChat = (query, subject) =>
-  api.post('/chat', { query, subject })
+  api.post('/api/chat', { query, subject })
 
 export const predictQuestions = (subject) =>
-  api.post('/predict', { subject })
+  api.post('/api/predict', { subject })
 
 export const fetchPYQPredictions = (threshold = 0.78) =>
-  api.get('/predict-questions', { params: { threshold } })
+  api.get('/api/predict-questions', { params: { threshold } })
 
 export const solvePYQ = (question, subject) =>
   api.post('/api/pyq', { question, subject })

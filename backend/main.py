@@ -71,7 +71,16 @@ app.include_router(weak_topics.router, prefix="/api")
 @app.get("/ping")
 def ping():
     """Simple health check - always returns 200 if server is running"""
-    return {"status": "pong"}
+    return {"status": "pong", "version": "latest_with_lfs_removed"}
+
+@app.get("/debug_qdrant")
+def debug_qdrant():
+    from services.qdrant_service import get_qdrant_client
+    c = get_qdrant_client()
+    return {
+        "client_type": type(c).__name__ if c else "None",
+        "is_memory": c.location == ":memory:" if c and hasattr(c, "location") else "Unknown",
+    }
 
 @app.get("/")
 def root():

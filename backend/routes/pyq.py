@@ -48,7 +48,7 @@ class PYQRequest(BaseModel):
     question: str
     subject: str = None
 
-@router.post("/api/pyq")
+@router.post("/pyq")
 async def solve_pyq(req: PYQRequest):
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")

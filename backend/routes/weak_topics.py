@@ -30,7 +30,7 @@ class WeakTopicsRequest(BaseModel):
     incorrect_questions: List[IncorrectQuestion]
 
 
-@router.post("/api/weak-topics")
+@router.post("/weak-topics")
 async def analyze_weaknesses(req: WeakTopicsRequest):
     if not req.incorrect_questions:
         return []

@@ -14,7 +14,7 @@ class QuizResponse(BaseModel):
     correct: str
     explanation: str
 
-@router.get("/api/quiz")
+@router.get("/quiz")
 async def generate_quiz(subject: str, difficulty: str = "medium", topic: Optional[str] = None):
     # Base query for retrieval - we use the topic if provided, else just a general domain search
     query_text = topic if topic else f"core concepts and important definitions in {subject}"
