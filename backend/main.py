@@ -79,19 +79,20 @@ def debug_qdrant():
     c = get_qdrant_client()
     cols = [col.name for col in c.get_collections().collections] if c else []
     
-    error = None
+    embed_error = None
     try:
-        from qdrant_client import QdrantClient
-        test_c = QdrantClient(path="./qdrant_data")
+        from fastembed import TextEmbedding
+        embed_fn = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
+        list(embed_fn.embed(["test"]))
     except Exception as e:
         import traceback
-        error = traceback.format_exc()
+        embed_error = traceback.format_exc()
 
     return {
         "client_type": type(c).__name__ if c else "None",
         "path": getattr(c._client, "location", None) or getattr(c._client, "_path", None) or "Unknown",
         "collections": cols,
-        "error": error
+        "embed_error": embed_error
     }
 
 @app.get("/")
