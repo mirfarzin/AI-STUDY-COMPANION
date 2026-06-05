@@ -78,10 +78,20 @@ def debug_qdrant():
     from services.qdrant_service import get_qdrant_client
     c = get_qdrant_client()
     cols = [col.name for col in c.get_collections().collections] if c else []
+    
+    error = None
+    try:
+        from qdrant_client import QdrantClient
+        test_c = QdrantClient(path="./qdrant_data")
+    except Exception as e:
+        import traceback
+        error = traceback.format_exc()
+
     return {
         "client_type": type(c).__name__ if c else "None",
         "path": getattr(c._client, "location", None) or getattr(c._client, "_path", None) or "Unknown",
-        "collections": cols
+        "collections": cols,
+        "error": error
     }
 
 @app.get("/")
