@@ -120,9 +120,9 @@ def semantic_search(
             for k, v in [("subject", subject), ("unit", unit), ("doc_type", doc_type)]
             if v
         ]
-        results = client.search(
+        results = client.query_points(
             collection_name=COLLECTION_NAME,
-            query_vector=q_emb,
+            query=q_emb,
             query_filter=Filter(must=filters) if filters else None,
             limit=n_results,
             with_payload=True,
@@ -136,7 +136,7 @@ def semantic_search(
                 "filename": r.payload.get("filename", ""),
                 "score": r.score,
             }
-            for r in results
+            for r in results.points
         ]
     except Exception as e:
         print(f"[ERROR] Qdrant search failed: {e}")
