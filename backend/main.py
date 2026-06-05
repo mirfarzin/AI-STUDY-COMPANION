@@ -82,15 +82,23 @@ def debug_qdrant():
     search_test = None
     try:
         embed_fn = _get_embedding_fn()
-        q_emb = list(list(embed_fn.embed(["test query"]))[0])
-        results = semantic_search("test query", n_results=2)
+        q_gen = embed_fn.embed(["test query"])
+        q_np = list(q_gen)[0]
+        q_emb_list = list(q_np)
+        q_emb_float = [float(x) for x in q_emb_list]
+        
+        results_np = c.search(collection_name="vtu_study_companion", query_vector=q_np, limit=2)
+        results_list = c.search(collection_name="vtu_study_companion", query_vector=q_emb_list, limit=2)
+        results_float = c.search(collection_name="vtu_study_companion", query_vector=q_emb_float, limit=2)
         
         pts, _ = c.scroll(collection_name="vtu_study_companion", limit=1, with_vectors=True)
         sample_vec = pts[0].vector if pts and hasattr(pts[0], 'vector') else None
         
         search_test = {
-            "num_results": len(results),
-            "q_emb_len": len(q_emb),
+            "num_np": len(results_np),
+            "num_list": len(results_list),
+            "num_float": len(results_float),
+            "q_np_type": type(q_np).__name__,
             "sample_vec_len": len(sample_vec) if sample_vec else None,
             "sample_vec_type": type(sample_vec).__name__ if sample_vec else None
         }
