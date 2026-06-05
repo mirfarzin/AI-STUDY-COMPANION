@@ -8,9 +8,17 @@ Also handles folder-level batch ingestion (used by sync route).
 import gc
 import json
 import re
+import sys
 import uuid
 from pathlib import Path
 from typing import Optional
+
+# Force UTF-8 stdout so filenames with non-Latin characters (Kannada, etc.) don't crash
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 
 import fitz  # PyMuPDF
 from services.qdrant_service import (
@@ -180,8 +188,10 @@ def ingest_folder(folder: str | Path, doc_type: str = "notes") -> dict:
             total_chunks += chunks
             total_files  += 1
         except Exception as e:
-            errors.append({"file": str(pdf_path), "error": str(e)})
-            print(f"  [ERROR] {pdf_path.name}: {e}")
+            err_str = str(e).encode('ascii', errors='replace').decode('ascii')
+            fname_str = str(pdf_path.name).encode('ascii', errors='replace').decode('ascii')
+            errors.append({"file": str(pdf_path), "error": err_str})
+            print(f"  [ERROR] {fname_str}: {err_str}")
 
     # Clean up memory after batch ingestion
     gc.collect()

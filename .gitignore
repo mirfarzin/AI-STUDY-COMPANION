@@ -12,3 +12,5 @@ notes_raw/
 backend/notes_raw/
 frontend/dist/
 *.pyc
+# qdrant_data is tracked via Git LFS (pre-built vector DB for Railway)
+# backend/qdrant_data/

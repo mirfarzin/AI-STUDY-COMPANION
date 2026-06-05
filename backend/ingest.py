@@ -3,6 +3,13 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Force UTF-8 stdout so Kannada/non-Latin filenames don't crash on Windows
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 # Load env variables (must be done before importing services)
 load_dotenv()
 
