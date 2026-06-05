@@ -96,6 +96,9 @@ async def solve_pyq(req: PYQRequest):
     
     answer = chat_with_context(messages)
     
+    if not answer or answer.startswith("Error:"):
+        raise HTTPException(status_code=502, detail=f"AI service error: {answer}")
+    
     return {
         "answer": answer,
         "sources": unique_sources,

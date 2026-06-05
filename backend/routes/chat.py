@@ -12,13 +12,12 @@ class ChatRequest(BaseModel):
     subject: str | None = None
 
 
-def _distance_to_similarity(distance: float) -> int:
+def _distance_to_similarity(score: float) -> int:
     """
-    Convert distance → 0–100 similarity score.
-    Uses a simple exponential decay: sim = 100 * exp(-distance / 2).
-    Lower distance = higher similarity.
+    Convert Qdrant cosine similarity score (0-1) → 0–100 percentage.
+    Qdrant returns similarity (higher = better), not distance.
     """
-    return round(100 * math.exp(-distance / 2))
+    return max(0, min(100, round(score * 100)))
 
 
 def _check_vector_db_ready():
@@ -37,16 +36,32 @@ def _check_vector_db_ready():
 @router.post("/chat")
 async def chat(req: ChatRequest):
     _check_vector_db_ready()
-    
+
     if not req.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
-    where_clause = {"subject": {"$eq": req.subject}} if req.subject else None
+    # Normalize subject name: strip whitespace
+    subject = req.subject.strip() if req.subject else None
+    where_clause = {"subject": {"$eq": subject}} if subject else None
 
-    chunk_results = query_chunks(req.query, n=5, where=where_clause)
+    try:
+        chunk_results = query_chunks(req.query, n=5, where=where_clause)
+    except Exception as e:
+        print(f"[ERROR] Qdrant query failed: {e}")
+        raise HTTPException(status_code=503, detail="Vector database query failed. Please try again.")
 
     if not chunk_results:
-        raise HTTPException(status_code=404, detail="No relevant content found for this subject.")
+        # Fallback: try without subject filter
+        if subject:
+            try:
+                chunk_results = query_chunks(req.query, n=5, where=None)
+            except Exception:
+                pass
+        if not chunk_results:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No relevant content found{' for subject: ' + subject if subject else ''}. Please ensure notes are uploaded."
+            )
 
     # Separate texts for LLM and build citations
     texts = [c["text"] for c in chunk_results]
@@ -82,10 +97,18 @@ async def chat(req: ChatRequest):
             "content": f"Context from study notes:\n\n{context_text}\n\nQuestion: {req.query}",
         },
     ]
-    answer = chat_with_context(messages)
+
+    try:
+        answer = chat_with_context(messages)
+    except Exception as e:
+        print(f"[ERROR] Groq LLM call failed: {e}")
+        raise HTTPException(status_code=502, detail="AI service temporarily unavailable. Please try again.")
+
+    if not answer or answer.startswith("Error:"):
+        raise HTTPException(status_code=502, detail=f"AI service error: {answer}")
 
     return {
         "answer": answer,
-        "subject": req.subject,
+        "subject": subject,
         "citations": unique_citations,
     }

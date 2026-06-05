@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Loader2, BookOpen, AlertCircle, RefreshCw, FileText } from 'lucide-react'
+import { Search, Loader2, BookOpen, AlertCircle, FileText, Sparkles } from 'lucide-react'
 import { solvePYQ } from '../api'
 
 export default function PYQPane({ activeSubject, subjects, onSelectSubject }) {
@@ -143,4 +143,3 @@ export default function PYQPane({ activeSubject, subjects, onSelectSubject }) {
     </div>
   )
 }
-// Need to add Sparkles to imports

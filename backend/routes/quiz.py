@@ -51,8 +51,15 @@ async def generate_quiz(subject: str, difficulty: str = "medium", topic: Optiona
     ]
     
     # Generate
-    response_text = chat_with_context(messages)
-    
+    try:
+        response_text = chat_with_context(messages)
+    except Exception as e:
+        print(f"[ERROR] Groq call failed in quiz: {e}")
+        raise HTTPException(status_code=502, detail="AI service temporarily unavailable.")
+
+    if not response_text or response_text.startswith("Error:"):
+        raise HTTPException(status_code=502, detail=f"AI service error: {response_text}")
+
     # Attempt to parse JSON safely
     try:
         # Clean up any potential markdown formatting the LLM might have included
