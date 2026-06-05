@@ -58,14 +58,14 @@ app.add_middleware(
 )
 
 # ── ROUTES ───────────────────────────────────────────────────────────────────
-# No /api prefix — frontend calls routes directly
-app.include_router(upload.router)
-app.include_router(chat.router)
-app.include_router(predict.router)
-app.include_router(pyq.router)
-app.include_router(sync.router)
-app.include_router(quiz.router)
-app.include_router(weak_topics.router)
+# Include all routers with /api prefix
+app.include_router(upload.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
+app.include_router(predict.router, prefix="/api")
+app.include_router(pyq.router, prefix="/api")
+app.include_router(sync.router, prefix="/api")
+app.include_router(quiz.router, prefix="/api")
+app.include_router(weak_topics.router, prefix="/api")
 
 # ── HEALTH / STATS ───────────────────────────────────────────────────────────
 @app.get("/ping")
@@ -109,11 +109,42 @@ def read_stats():
 
 @app.on_event("startup")
 async def startup():
+    import asyncio
     print("Server started successfully")
     print(f"   Port: {os.getenv('PORT', 8080)}")
     print(f"   Vector DB: {VECTOR_DB_TYPE if VECTOR_DB_READY else 'NOT READY - ' + str(VECTOR_DB_ERROR)}")
-    # Force garbage collection on startup to free init memory
     gc.collect()
+
+    # Auto-ingest if Qdrant is empty and notes_raw folder exists
+    asyncio.create_task(_auto_ingest_if_empty())
+
+
+async def _auto_ingest_if_empty():
+    """Background task: auto-ingest PDFs from notes_raw if Qdrant collection is empty."""
+    import asyncio
+    from pathlib import Path
+    await asyncio.sleep(3)  # Let server finish starting
+
+    notes_dir = Path("notes_raw")
+    if not notes_dir.exists():
+        print("[STARTUP] notes_raw/ not found — skipping auto-ingestion.")
+        return
+
+    try:
+        from services.qdrant_service import get_collection_stats, get_or_create_collection
+        get_or_create_collection()  # Ensure collection exists
+        stats = get_collection_stats()
+        total = stats.get("total_chunks", 0)
+        if total > 0:
+            print(f"[STARTUP] Qdrant already has {total} chunks — skipping auto-ingestion.")
+            return
+
+        print("[STARTUP] Qdrant is empty. Starting auto-ingestion from notes_raw/ ...")
+        from services.pdf_service import ingest_folder
+        result = ingest_folder(notes_dir)
+        print(f"[STARTUP] Auto-ingestion complete: {result['files_processed']} files, {result['total_chunks']} chunks, {len(result['errors'])} errors.")
+    except Exception as e:
+        print(f"[STARTUP] Auto-ingestion failed: {e}")
 
 
 # ── DEFAULT SUBJECTS ENDPOINT ────────────────────────────────────────────────
