@@ -4,15 +4,25 @@ import ChatPane from './components/ChatPane'
 import PredictPane from './components/PredictPane'
 import PYQPane from './components/PYQPane'
 import QuizPane from './components/QuizPane'
-import UploadModal from './components/UploadModal'
+import WeakTopicsPane from './components/WeakTopicsPane'
 import { fetchSubjects } from './api'
 import { MessageSquare, Sparkles, AlertCircle, RefreshCw, BookOpen, Brain } from 'lucide-react'
 
 export default function App() {
+  // Listen for weak data from QuizPane
+  useEffect(() => {
+    const handler = (e) => {
+      setWeakData(e.detail.data);
+      setView('weak');
+    };
+    window.addEventListener('weakDataReady', handler);
+    return () => window.removeEventListener('weakDataReady', handler);
+  }, []);
   const [subjects, setSubjects] = useState([])
   const [activeSubject, setActiveSubject] = useState(null)
-  const [view, setView] = useState('chat') // 'chat' | 'predict'
+  const [view, setView] = useState('chat') // 'chat' | 'predict' | 'pyq' | 'quiz' | 'weak'
   const [showUpload, setShowUpload] = useState(false)
+  const [weakData, setWeakData] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -135,7 +145,7 @@ export default function App() {
             PYQ Solver
           </button>
           <button
-            onClick={() => setView('quiz')}
+            onClick={() => setView('weak')}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all ${
               view === 'quiz'
                 ? 'bg-bg-card text-accent-light border border-b-0 border-bg-border'
@@ -143,7 +153,7 @@ export default function App() {
             }`}
           >
             <Brain size={15} />
-            Quiz Me
+            Weak Topics
           </button>
         </div>
 
@@ -153,6 +163,7 @@ export default function App() {
           {view === 'predict' && <PredictPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />}
           {view === 'pyq' && <PYQPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />}
           {view === 'quiz' && <QuizPane activeSubject={activeSubject} subjects={subjects} onSelectSubject={setActiveSubject} />}
+          {view === 'weak' && <WeakTopicsPane subject={activeSubject} weakData={weakData} setWeakData={setWeakData} onBack={() => setView('quiz')} />}
         </div>
       </div>
 
