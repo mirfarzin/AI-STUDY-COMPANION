@@ -73,6 +73,16 @@ def ping():
     """Simple health check - always returns 200 if server is running"""
     return {"status": "pong", "version": "latest_with_lfs_removed"}
 
+@app.get("/debug-env")
+def debug_env():
+    """Temporary: confirm GROQ_API_KEY is visible inside the running container."""
+    key = os.environ.get("GROQ_API_KEY", "")
+    return {
+        "key_present": bool(key),
+        "key_prefix": key[:8] if key else "MISSING",
+        "groq_model": os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant"),
+    }
+
 @app.get("/debug_qdrant")
 def debug_qdrant():
     from services.qdrant_service import get_qdrant_client, semantic_search, _get_embedding_fn

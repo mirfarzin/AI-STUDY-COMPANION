@@ -5,15 +5,19 @@ from typing import List, Dict
 _client = None
 
 def get_groq_client():
+    """Lazy Groq client — re-reads GROQ_API_KEY on every call until a valid key is found.
+    This prevents the startup-caching bug where Railway injects env vars after module load.
+    """
     global _client
+    # Always re-check env; if key wasn't set at startup it may be available now
+    api_key = os.environ.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+    if not api_key:
+        print("[ERROR] GROQ_API_KEY is not set in environment")
+        return None
+    # Rebuild client only if we don't have one yet (or key changed)
     if _client is None:
-        api_key = os.getenv("GROQ_API_KEY")
-        if api_key:
-            _client = Groq(api_key=api_key)
-            print("✅ Groq client initialized")
-        else:
-            print("⚠️ GROQ_API_KEY not set")
-            _client = None
+        _client = Groq(api_key=api_key)
+        print(f"[OK] Groq client initialized with key prefix={api_key[:8]}...")
     return _client
 
 def _get_model() -> str:

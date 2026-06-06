@@ -1,71 +1,54 @@
-import math
+import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.qdrant_service import query_chunks, list_collections
+from typing import Optional
+from services.qdrant_service import semantic_search
 from services.groq_service import chat_with_context
 
 router = APIRouter()
 
 
 class ChatRequest(BaseModel):
-    query: str
-    subject: str | None = None
+    # Support both {query, subject} (internal) and {message, subject} (frontend)
+    query: Optional[str] = None
+    message: Optional[str] = None
+    subject: Optional[str] = None
 
 
 def _distance_to_similarity(score: float) -> int:
-    """
-    Convert Qdrant cosine similarity score (0-1) → 0–100 percentage.
-    Qdrant returns similarity (higher = better), not distance.
-    """
     return max(0, min(100, round(score * 100)))
-
-
-def _check_vector_db_ready():
-    """Check if vector database is initialized, raise error if not."""
-    try:
-        from main import VECTOR_DB_READY, VECTOR_DB_ERROR
-        if not VECTOR_DB_READY:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Qdrant not available: {VECTOR_DB_ERROR}. Please configure QDRANT_URL and QDRANT_API_KEY environment variables."
-            )
-    except ImportError:
-        pass  # Fallback if import fails
 
 
 @router.post("/chat")
 async def chat(req: ChatRequest):
-    _check_vector_db_ready()
-
-    if not req.query.strip():
+    # Accept either 'query' or 'message' field
+    user_query = (req.query or req.message or "").strip()
+    if not user_query:
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
-    # Normalize subject name: strip whitespace
     subject = req.subject.strip() if req.subject else None
-    where_clause = {"subject": {"$eq": subject}} if subject else None
 
+    # Semantic search against qdrant embedded DB
     try:
-        chunk_results = query_chunks(req.query, n=5, where=where_clause)
+        chunk_results = semantic_search(user_query, n_results=5, subject=subject)
     except Exception as e:
-        print(f"[ERROR] Qdrant query failed: {e}")
+        print(f"[ERROR] Qdrant semantic_search failed: {e}")
         raise HTTPException(status_code=503, detail="Vector database query failed. Please try again.")
 
+    # Fallback: retry without subject filter if no results
+    if not chunk_results and subject:
+        try:
+            chunk_results = semantic_search(user_query, n_results=5)
+        except Exception:
+            pass
+
     if not chunk_results:
-        # Fallback: try without subject filter
-        if subject:
-            try:
-                chunk_results = query_chunks(req.query, n=5, where=None)
-            except Exception:
-                pass
-        if not chunk_results:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No relevant content found{' for subject: ' + subject if subject else ''}. Please ensure notes are uploaded."
-            )
+        raise HTTPException(
+            status_code=404,
+            detail=f"No relevant content found{' for subject: ' + subject if subject else ''}. Please ensure notes are uploaded."
+        )
 
-    # Separate texts for LLM and build citations
     texts = [c["text"] for c in chunk_results]
-
     citations = [
         {
             "source": c.get("filename") or c.get("subject") or "Unknown Document",
@@ -75,8 +58,8 @@ async def chat(req: ChatRequest):
         for c in chunk_results
     ]
 
-    # Deduplicate citations by source + keep the highest-similarity one
-    seen: dict[str, dict] = {}
+    # Deduplicate citations — keep highest similarity per source
+    seen: dict = {}
     for cit in citations:
         key = cit["source"]
         if key not in seen or cit["similarity"] > seen[key]["similarity"]:
@@ -94,15 +77,11 @@ async def chat(req: ChatRequest):
         },
         {
             "role": "user",
-            "content": f"Context from study notes:\n\n{context_text}\n\nQuestion: {req.query}",
+            "content": f"Context from study notes:\n\n{context_text}\n\nQuestion: {user_query}",
         },
     ]
 
-    try:
-        answer = chat_with_context(messages)
-    except Exception as e:
-        print(f"[ERROR] Groq LLM call failed: {e}")
-        raise HTTPException(status_code=502, detail="AI service temporarily unavailable. Please try again.")
+    answer = chat_with_context(messages)
 
     if not answer or answer.startswith("Error:"):
         raise HTTPException(status_code=502, detail=f"AI service error: {answer}")
