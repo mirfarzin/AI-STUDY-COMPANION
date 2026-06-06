@@ -9,7 +9,6 @@ router = APIRouter()
 
 
 class ChatRequest(BaseModel):
-    # Support both {query, subject} (internal) and {message, subject} (frontend)
     query: Optional[str] = None
     message: Optional[str] = None
     subject: Optional[str] = None
@@ -21,21 +20,18 @@ def _distance_to_similarity(score: float) -> int:
 
 @router.post("/chat")
 async def chat(req: ChatRequest):
-    # Accept either 'query' or 'message' field
     user_query = (req.query or req.message or "").strip()
     if not user_query:
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
     subject = req.subject.strip() if req.subject else None
 
-    # Semantic search against qdrant embedded DB
     try:
         chunk_results = semantic_search(user_query, n_results=5, subject=subject)
     except Exception as e:
         print(f"[ERROR] Qdrant semantic_search failed: {e}")
         raise HTTPException(status_code=503, detail="Vector database query failed. Please try again.")
 
-    # Fallback: retry without subject filter if no results
     if not chunk_results and subject:
         try:
             chunk_results = semantic_search(user_query, n_results=5)
@@ -58,7 +54,6 @@ async def chat(req: ChatRequest):
         for c in chunk_results
     ]
 
-    # Deduplicate citations — keep highest similarity per source
     seen: dict = {}
     for cit in citations:
         key = cit["source"]
@@ -71,13 +66,26 @@ async def chat(req: ChatRequest):
         {
             "role": "system",
             "content": (
-                "You are a helpful VTU study assistant. Answer questions based on the provided study notes context. "
-                "Be concise, accurate, and cite the subject when relevant."
+                "You are a friendly and knowledgeable VTU Study Companion. "
+                "Use the retrieved study notes as the primary source of information. "
+                "For simple concept questions such as definitions, syntax explanations, formulas, or short doubts, "
+                "provide concise answers between 100 and 200 words. Use simple language and include a short example where helpful. "
+                "For exam-oriented questions, including 5-mark, 10-mark, explain, discuss, elaborate, compare, or describe questions, "
+                "provide detailed VTU-style answers with proper headings and formatting. Include Definition, Explanation, Key Points, "
+                "Advantages and Disadvantages (if applicable), Diagram Description (if applicable), and Conclusion. "
+                "Use information from the retrieved notes first. If the notes do not contain enough information, "
+                "supplement the answer using accurate academic knowledge while clearly prioritizing the uploaded notes. "
+                "Do not invent facts, citations, page numbers, or sources. "
+                "Be accurate, educational, well-structured, and easy to understand. "
+                "Format answers using Markdown with headings, bullet points, and code blocks when appropriate."
             ),
         },
         {
             "role": "user",
-            "content": f"Context from study notes:\n\n{context_text}\n\nQuestion: {user_query}",
+            "content": (
+                f"Context from study notes:\n\n{context_text}\n\n"
+                f"Question: {user_query}"
+            ),
         },
     ]
 
