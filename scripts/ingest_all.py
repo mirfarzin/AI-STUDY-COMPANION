@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '.')
-from services.pdf_service import ingest_pdf
+from backend.services.pdf_service import ingest_pdf
 import json
 
 with open('notes_raw/manifest.json') as f:

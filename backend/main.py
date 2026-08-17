@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import routers
-from routes import upload, chat, predict, pyq, sync, quiz, weak_topics
+from backend.routes import upload, chat, predict, pyq, sync, quiz, weak_topics
 
 # ── QDRANT CLOUD INITIALIZATION ───────────────────────────────────────────────
 VECTOR_DB_READY = False
@@ -23,7 +23,7 @@ VECTOR_DB_TYPE = "Not initialized"
 VECTOR_DB_ERROR = None
 
 try:
-    from services.qdrant_service import get_qdrant_client, get_collection_stats
+    from backend.lib.clients.qdrant import get_qdrant_client, get_collection_stats
     # get_qdrant_client() reads QDRANT_URL and QDRANT_API_KEY from env at call time
     _qdrant_url = os.getenv("QDRANT_URL")
     _qdrant_key = os.getenv("QDRANT_API_KEY")
@@ -85,7 +85,7 @@ def debug_env():
 
 @app.get("/debug_qdrant")
 def debug_qdrant():
-    from services.qdrant_service import get_qdrant_client, semantic_search, _get_embedding_fn
+    from backend.lib.clients.qdrant import get_qdrant_client, semantic_search, _get_embedding_fn
     c = get_qdrant_client()
     cols = [col.name for col in c.get_collections().collections] if c else []
     
@@ -181,7 +181,7 @@ async def _auto_ingest_if_empty():
         return
 
     try:
-        from services.qdrant_service import get_collection_stats, get_or_create_collection
+        from backend.lib.clients.qdrant import get_collection_stats, get_or_create_collection
         get_or_create_collection()  # Ensure collection exists
         stats = get_collection_stats()
         total = stats.get("total_chunks", 0)
@@ -190,7 +190,7 @@ async def _auto_ingest_if_empty():
             return
 
         print("[STARTUP] Qdrant is empty. Starting auto-ingestion from notes_raw/ ...")
-        from services.pdf_service import ingest_folder
+        from backend.services.pdf_service import ingest_folder
         result = ingest_folder(notes_dir)
         print(f"[STARTUP] Auto-ingestion complete: {result['files_processed']} files, {result['total_chunks']} chunks, {len(result['errors'])} errors.")
     except Exception as e:

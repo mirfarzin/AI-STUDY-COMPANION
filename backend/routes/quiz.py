@@ -3,8 +3,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json
 
-from services.qdrant_service import query_chunks
-from services.groq_service import chat_with_context
+from backend.lib.clients.qdrant import query_chunks
+from backend.lib.clients.groq import chat_with_context
+from backend.lib.prompts.templates import get_quiz_system_prompt
 
 router = APIRouter()
 
@@ -29,21 +30,7 @@ async def generate_quiz(subject: str, difficulty: str = "medium", topic: Optiona
     texts = [c["text"] for c in chunk_results]
     context_text = "\n\n---\n\n".join(texts)
     
-    sys_prompt = (
-        "You are an expert VTU professor generating a multiple choice quiz based strictly on the provided study notes. "
-        "Generate exactly 5 multiple choice questions (MCQs). "
-        f"The difficulty should be {difficulty}. "
-        "You MUST output valid JSON ONLY, conforming exactly to this array structure:\n"
-        "[\n"
-        "  {\n"
-        '    "question": "...",\n'
-        '    "options": ["A) ...", "B) ...", "C) ...", "D) ..."],\n'
-        '    "correct": "B",\n'
-        '    "explanation": "..."\n'
-        "  }\n"
-        "]\n"
-        "Do not include any markdown formatting like ```json or other text."
-    )
+    sys_prompt = get_quiz_system_prompt(difficulty)
     
     messages = [
         {"role": "system", "content": sys_prompt},

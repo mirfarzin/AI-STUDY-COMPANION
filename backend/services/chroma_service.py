@@ -6,7 +6,7 @@ The original ChromaDB implementation has been fully migrated to Qdrant Cloud.
 All function signatures are preserved so existing imports continue to work.
 """
 
-from services.qdrant_service import (
+from backend.lib.clients.qdrant import (
     get_qdrant_client as get_client,
     get_or_create_collection,
     add_chunks,

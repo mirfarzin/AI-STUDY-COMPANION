@@ -67,7 +67,10 @@ function AIPredictTab({ activeSubject, subjects, onSelectSubject }) {
     setLoading(true); setError(''); setQuestions([]); setExpanded({})
     try {
       const res = await predictQuestions(activeSubject)
-      setQuestions(parseQA(res.data.questions))
+      const rawQuestions = typeof res.data.questions === 'string'
+        ? res.data.questions
+        : res.data.questions?.questions || ''
+      setQuestions(parseQA(rawQuestions))
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to generate questions.')
     } finally { setLoading(false) }

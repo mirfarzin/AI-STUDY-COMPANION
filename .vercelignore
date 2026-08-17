@@ -1,0 +1,4 @@
+# Ignore offline Python backend and obsolete root requirements from Vercel deployment
+backend/
+requirements.txt
+Dockerfile

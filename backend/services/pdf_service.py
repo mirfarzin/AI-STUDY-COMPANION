@@ -21,7 +21,7 @@ except Exception:
     pass
 
 import fitz  # PyMuPDF
-from services.qdrant_service import (
+from backend.lib.clients.qdrant import (
     get_or_create_collection,
     add_chunks as qdrant_add_chunks,
     get_all_chunks,

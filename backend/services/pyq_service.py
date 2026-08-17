@@ -14,7 +14,7 @@ Algorithm:
 import re
 import numpy as np
 
-from services.qdrant_service import get_all_chunks
+from backend.lib.clients.qdrant import get_all_chunks
 
 # ---------------------------------------------------------------------------
 # Model — loaded lazily on first call so startup isn't blocked

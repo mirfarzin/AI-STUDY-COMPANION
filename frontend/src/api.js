@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-// Get API base URL from environment or use Railway production URL
-const API_BASE = import.meta.env.VITE_API_URL || 'https://ai-study-companion-production-d7af.up.railway.app'
+// Get API base URL from environment or use same-origin relative path for Vercel
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 // Create axios instance with timeout and headers
 const api = axios.create({
@@ -39,7 +39,7 @@ export const uploadPDF = (file, onProgress) => {
   })
 }
 
-export const fetchSubjects = () => api.get('/subjects')
+export const fetchSubjects = () => api.get('/api/subjects')
 
 export const deleteSubject = (subject) => api.delete(`/api/subject/${subject}`)
 

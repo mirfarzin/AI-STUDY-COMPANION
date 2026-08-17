@@ -13,8 +13,8 @@ except Exception:
 # Load env variables (must be done before importing services)
 load_dotenv()
 
-from services.pdf_service import ingest_folder
-from services.qdrant_service import get_collection_stats
+from backend.services.pdf_service import ingest_folder
+from backend.lib.clients.qdrant import get_collection_stats
 
 def main():
     notes_dir = Path("notes_raw")
@@ -41,7 +41,7 @@ def main():
     stats = get_collection_stats()
     subjects = stats.get("subjects", [])
     
-    from services.qdrant_service import get_all_chunks, query_chunks
+    from backend.lib.clients.qdrant import get_all_chunks, query_chunks
     print(f"{'Subject':<35} | {'Chunks':<8} | {'QueryOK'}")
     print("-" * 65)
     for sub in subjects:
@@ -54,7 +54,7 @@ def main():
             # It's hard to get exact count per subject without scrolling everything, 
             # so we just mark it OK and show total at the end.
             # But wait, Qdrant allows filter counting if we use the client directly.
-            from services.qdrant_service import get_qdrant_client, COLLECTION_NAME, Filter, FieldCondition, MatchValue
+            from backend.lib.clients.qdrant import get_qdrant_client, COLLECTION_NAME, Filter, FieldCondition, MatchValue
             client = get_qdrant_client()
             count = client.count(
                 collection_name=COLLECTION_NAME, 

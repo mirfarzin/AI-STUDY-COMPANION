@@ -3,7 +3,8 @@ from pydantic import BaseModel, model_validator
 from typing import List, Any
 import json
 
-from services.groq_service import chat_with_context
+from backend.lib.clients.groq import chat_with_context
+from backend.lib.prompts.templates import WEAK_TOPICS_SYSTEM_PROMPT
 
 router = APIRouter()
 
@@ -43,15 +44,7 @@ async def analyze_weaknesses(req: WeakTopicsRequest):
             f"Correct answer: {q.correct_answer}\n\n"
         )
 
-    sys_prompt = (
-        "You are an AI study coach analyzing a student's quiz performance. "
-        "The user got several questions wrong. Group the missed questions into high-level conceptual 'topics'. "
-        "Return the analysis as a JSON array where each object has:\n"
-        "- 'topic' (string: name of the weak conceptual area)\n"
-        "- 'suggestion' (string: actionable study tip)\n"
-        "- 'question_count' (int: number of questions missed in this area)\n"
-        "Return valid JSON ONLY, no markdown blocks, no extra text."
-    )
+    sys_prompt = WEAK_TOPICS_SYSTEM_PROMPT
 
     messages = [
         {"role": "system", "content": sys_prompt},

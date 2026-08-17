@@ -10,9 +10,9 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import JSONResponse
 
-from services.scraper_service import scrape_ritnotebook
-from services.pdf_service import ingest_folder
-from services.qdrant_service import get_collection_stats
+from backend.services.scraper_service import scrape_ritnotebook
+from backend.services.pdf_service import ingest_folder
+from backend.lib.clients.qdrant import get_collection_stats
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 

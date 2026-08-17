@@ -2,8 +2,9 @@ import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from services.qdrant_service import semantic_search
-from services.groq_service import chat_with_context
+from backend.lib.clients.qdrant import semantic_search
+from backend.lib.clients.groq import chat_with_context
+from backend.lib.prompts.templates import CHAT_SYSTEM_PROMPT
 
 router = APIRouter()
 
@@ -65,20 +66,7 @@ async def chat(req: ChatRequest):
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are a friendly and knowledgeable VTU Study Companion. "
-                "Use the retrieved study notes as the primary source of information. "
-                "For simple concept questions such as definitions, syntax explanations, formulas, or short doubts, "
-                "provide concise answers between 100 and 200 words. Use simple language and include a short example where helpful. "
-                "For exam-oriented questions, including 5-mark, 10-mark, explain, discuss, elaborate, compare, or describe questions, "
-                "provide detailed VTU-style answers with proper headings and formatting. Include Definition, Explanation, Key Points, "
-                "Advantages and Disadvantages (if applicable), Diagram Description (if applicable), and Conclusion. "
-                "Use information from the retrieved notes first. If the notes do not contain enough information, "
-                "supplement the answer using accurate academic knowledge while clearly prioritizing the uploaded notes. "
-                "Do not invent facts, citations, page numbers, or sources. "
-                "Be accurate, educational, well-structured, and easy to understand. "
-                "Format answers using Markdown with headings, bullet points, and code blocks when appropriate."
-            ),
+            "content": CHAT_SYSTEM_PROMPT,
         },
         {
             "role": "user",

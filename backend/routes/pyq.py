@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from services.pyq_service import analyze_pyqs
+from backend.services.pyq_service import analyze_pyqs
 
 router = APIRouter()
 
@@ -41,8 +41,9 @@ async def predict_questions(
     }
 
 from pydantic import BaseModel
-from services.qdrant_service import query_chunks
-from services.groq_service import chat_with_context
+from backend.lib.clients.qdrant import query_chunks
+from backend.lib.clients.groq import chat_with_context
+from backend.lib.prompts.templates import PYQ_SYSTEM_PROMPT
 
 class PYQRequest(BaseModel):
     question: str
@@ -86,7 +87,7 @@ async def solve_pyq(req: PYQRequest):
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful VTU assistant. Answer this VTU PYQ (Previous Year Question) using ONLY the provided context."
+            "content": PYQ_SYSTEM_PROMPT
         },
         {
             "role": "user",

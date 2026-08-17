@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.qdrant_service import get_all_chunks
-from services.groq_service import predict_questions
+from backend.lib.clients.qdrant import get_all_chunks
+from backend.lib.clients.groq import predict_questions
 
 router = APIRouter()
 

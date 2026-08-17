@@ -2,8 +2,8 @@ import re
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
-from services.pdf_service import extract_text_from_pdf, chunk_text
-from services.qdrant_service import (
+from backend.services.pdf_service import extract_text_from_pdf, chunk_text
+from backend.lib.clients.qdrant import (
     add_chunks,
     list_collections,
     delete_collection,
@@ -15,7 +15,7 @@ router = APIRouter()
 def _check_vector_db_ready():
     """Check if vector database is initialized, raise error if not."""
     try:
-        from main import VECTOR_DB_READY, VECTOR_DB_ERROR
+        from backend.main import VECTOR_DB_READY, VECTOR_DB_ERROR
         if not VECTOR_DB_READY:
             raise HTTPException(
                 status_code=503,
@@ -92,7 +92,7 @@ async def get_documents():
         "documents": list_collections()
     }
 
-from services.qdrant_service import get_collection_stats, delete_subject
+from backend.lib.clients.qdrant import get_collection_stats, delete_subject
 
 
 
