@@ -1,22 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getCollectionStats } from '../lib/qdrant';
-
-const DEFAULT_SUBJECTS = [
-    "AI and ML",
-    "Analysis and Design of Algorithms",
-    "Computer Networks",
-    "Data Science",
-    "Database Management Systems",
-    "Microcontrollers",
-    "Operating Systems",
-    "Software Engineering",
-    "Mathematics ChemistryCycle",
-    "Mathematics PhysicsCycle",
-    "PLC",
-    "Physics",
-    "Principles of Programming C",
-    "Professional Writing English"
-];
+import { getCollectionStats, AUTHORITATIVE_FIRST_YEAR_SUBJECTS } from '../lib/qdrant';
 
 export default async function handler(
   req: VercelRequest,
@@ -37,6 +20,7 @@ export default async function handler(
     console.error("Error fetching subjects from Qdrant:", error);
   }
 
-  // Return default subjects if Qdrant is not available or empty
-  return res.status(200).json({ subjects: DEFAULT_SUBJECTS });
+  // Return authoritative 14 subjects if Qdrant is not available or empty
+  return res.status(200).json({ subjects: AUTHORITATIVE_FIRST_YEAR_SUBJECTS });
 }
+

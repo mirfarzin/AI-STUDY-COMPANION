@@ -9,6 +9,86 @@ from qdrant_client.models import PointStruct, VectorParams, Distance, Filter, Ma
 COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "vtu_study_companion")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 
+AUTHORITATIVE_FIRST_YEAR_SUBJECTS = [
+    "Mathematics",
+    "Physics",
+    "Communication English",
+    "Kannada Kali / Manasu",
+    "A Scientific Approach to Health",
+    "Principles of Programming Using C",
+    "ESC",
+    "PLC",
+    "Chemistry",
+    "Professional Writing Skills in English",
+    "Constitution of India",
+    "Design Thinking",
+    "Computer-Aided Engineering Drawing",
+    "ETC"
+]
+
+EXCLUDED_SUBJECTS = {
+    "AI and ML",
+    "Analysis and Design of Algorithms",
+    "Computer Networks",
+    "Data Science",
+    "Database Management Systems",
+    "Microcontrollers",
+    "Operating Systems",
+    "Software Engineering"
+}
+
+RAW_TO_CANONICAL_SUBJECT_MAP = {
+    "CAED": "Computer-Aided Engineering Drawing",
+    "Computer-Aided Engineering Drawing": "Computer-Aided Engineering Drawing",
+    "Chemistry": "Chemistry",
+    "Communication English": "Communication English",
+    "Constitution of India": "Constitution of India",
+    "Design Thinking": "Design Thinking",
+    "ESC": "ESC",
+    "ETC": "ETC",
+    "Kannada Kali Manasu": "Kannada Kali / Manasu",
+    "Kannada Kali / Manasu": "Kannada Kali / Manasu",
+    "Mathematics ChemistryCycle": "Mathematics",
+    "Mathematics PhysicsCycle": "Mathematics",
+    "Mathematics": "Mathematics",
+    "Physics": "Physics",
+    "PLC": "PLC",
+    "Principles of Programming C": "Principles of Programming Using C",
+    "Principles of Programming Using C": "Principles of Programming Using C",
+    "Professional Writing English": "Professional Writing Skills in English",
+    "Professional Writing Skills in English": "Professional Writing Skills in English",
+    "Scientific Approach to Health": "A Scientific Approach to Health",
+    "A Scientific Approach to Health": "A Scientific Approach to Health"
+}
+
+CANONICAL_TO_RAW_SUBJECT_MAP = {
+    "Mathematics": ["Mathematics", "Mathematics ChemistryCycle", "Mathematics PhysicsCycle"],
+    "Physics": ["Physics"],
+    "Communication English": ["Communication English"],
+    "Kannada Kali / Manasu": ["Kannada Kali / Manasu", "Kannada Kali Manasu"],
+    "A Scientific Approach to Health": ["A Scientific Approach to Health", "Scientific Approach to Health"],
+    "Principles of Programming Using C": ["Principles of Programming Using C", "Principles of Programming C"],
+    "ESC": ["ESC"],
+    "PLC": ["PLC"],
+    "Chemistry": ["Chemistry"],
+    "Professional Writing Skills in English": ["Professional Writing Skills in English", "Professional Writing English"],
+    "Constitution of India": ["Constitution of India"],
+    "Design Thinking": ["Design Thinking"],
+    "Computer-Aided Engineering Drawing": ["Computer-Aided Engineering Drawing", "CAED"],
+    "ETC": ["ETC"]
+}
+
+def get_raw_subject_filter_values(subject: str) -> List[str]:
+    if not subject:
+        return []
+    s = subject.strip()
+    if s in CANONICAL_TO_RAW_SUBJECT_MAP:
+        return CANONICAL_TO_RAW_SUBJECT_MAP[s]
+    canonical = RAW_TO_CANONICAL_SUBJECT_MAP.get(s)
+    if canonical and canonical in CANONICAL_TO_RAW_SUBJECT_MAP:
+        return CANONICAL_TO_RAW_SUBJECT_MAP[canonical]
+    return [s]
+
 _client: Optional[QdrantClient] = None
 _embedding_model = None
 
@@ -113,13 +193,20 @@ def semantic_search(
         return []
     try:
         embed_fn = _get_embedding_fn()
-        # Convert numpy float32 to python native floats (Qdrant local mode fails silently otherwise)
         q_emb = [float(x) for x in list(embed_fn.embed([query]))[0]]
-        filters = [
-            FieldCondition(key=k, match=MatchValue(value=v))
-            for k, v in [("subject", subject), ("unit", unit), ("doc_type", doc_type)]
-            if v
-        ]
+        filters = []
+        if subject:
+            raw_subs = get_raw_subject_filter_values(subject)
+            if len(raw_subs) == 1:
+                filters.append(FieldCondition(key="subject", match=MatchValue(value=raw_subs[0])))
+            elif len(raw_subs) > 1:
+                from qdrant_client.models import MatchAny
+                filters.append(FieldCondition(key="subject", match=MatchAny(any=raw_subs)))
+        if unit:
+            filters.append(FieldCondition(key="unit", match=MatchValue(value=unit)))
+        if doc_type:
+            filters.append(FieldCondition(key="doc_type", match=MatchValue(value=doc_type)))
+
         results = client.query_points(
             collection_name=COLLECTION_NAME,
             query=q_emb,
@@ -127,17 +214,21 @@ def semantic_search(
             limit=n_results,
             with_payload=True,
         )
-        return [
-            {
+        out = []
+        for r in results.points:
+            raw_subj = r.payload.get("subject", "")
+            if raw_subj in EXCLUDED_SUBJECTS:
+                continue
+            canonical_subj = RAW_TO_CANONICAL_SUBJECT_MAP.get(raw_subj, raw_subj)
+            out.append({
                 "text": r.payload.get("text", ""),
-                "subject": r.payload.get("subject", ""),
+                "subject": canonical_subj,
                 "unit": r.payload.get("unit", ""),
                 "doc_type": r.payload.get("doc_type", ""),
                 "filename": r.payload.get("filename", ""),
                 "score": r.score,
-            }
-            for r in results.points
-        ]
+            })
+        return out
     except Exception as e:
         print(f"[ERROR] Qdrant search failed: {e}")
         return []
@@ -148,15 +239,36 @@ def get_all_chunks(where: Optional[Dict] = None) -> List[Dict]:
     if not client:
         return []
     try:
+        filters = []
+        if where and "subject" in where:
+            subj_val = where["subject"].get("$eq") if isinstance(where["subject"], dict) else where["subject"]
+            if subj_val:
+                raw_subs = get_raw_subject_filter_values(subj_val)
+                if len(raw_subs) == 1:
+                    filters.append(FieldCondition(key="subject", match=MatchValue(value=raw_subs[0])))
+                elif len(raw_subs) > 1:
+                    from qdrant_client.models import MatchAny
+                    filters.append(FieldCondition(key="subject", match=MatchAny(any=raw_subs)))
+
         out, offset = [], None
         while True:
             pts, offset = client.scroll(
-                collection_name=COLLECTION_NAME, limit=1000, offset=offset, with_payload=True
+                collection_name=COLLECTION_NAME,
+                scroll_filter=Filter(must=filters) if filters else None,
+                limit=1000,
+                offset=offset,
+                with_payload=True,
             )
             for p in pts:
+                raw_subj = p.payload.get("subject", "")
+                if raw_subj in EXCLUDED_SUBJECTS:
+                    continue
+                canonical_subj = RAW_TO_CANONICAL_SUBJECT_MAP.get(raw_subj, raw_subj)
+                meta = {k: v for k, v in p.payload.items() if k != "text"}
+                meta["subject"] = canonical_subj
                 out.append({
                     "text": p.payload.get("text", ""),
-                    "metadata": {k: v for k, v in p.payload.items() if k != "text"},
+                    "metadata": meta,
                 })
             if not offset:
                 break
@@ -169,25 +281,13 @@ def get_all_chunks(where: Optional[Dict] = None) -> List[Dict]:
 def get_collection_stats() -> Dict:
     client = get_qdrant_client()
     if not client:
-        return {"total_chunks": 0, "subjects": [], "doc_types": {}}
+        return {"total_chunks": 0, "subjects": list(AUTHORITATIVE_FIRST_YEAR_SUBJECTS), "doc_types": {}}
     try:
         total = client.count(collection_name=COLLECTION_NAME).count
-        subjects: set = set()
-        offset = None
-        while True:
-            pts, offset = client.scroll(
-                collection_name=COLLECTION_NAME, limit=1000, offset=offset, with_payload=True
-            )
-            for p in pts:
-                subj = p.payload.get("subject")
-                if subj:
-                    subjects.add(subj)
-            if not offset:
-                break
-        return {"total_chunks": total, "subjects": sorted(list(subjects)), "doc_types": {}}
+        return {"total_chunks": total, "subjects": list(AUTHORITATIVE_FIRST_YEAR_SUBJECTS), "doc_types": {}}
     except Exception as e:
         print(f"[ERROR] Qdrant stats failed: {e}")
-        return {"total_chunks": 0, "subjects": [], "doc_types": {}}
+        return {"total_chunks": 0, "subjects": list(AUTHORITATIVE_FIRST_YEAR_SUBJECTS), "doc_types": {}}
 
 
 def delete_subject(subject: str) -> int:
@@ -195,10 +295,12 @@ def delete_subject(subject: str) -> int:
     if not client:
         return 0
     try:
-        client.delete(
-            collection_name=COLLECTION_NAME,
-            points_selector=Filter(must=[FieldCondition(key="subject", match=MatchValue(value=subject))]),
-        )
+        raw_subs = get_raw_subject_filter_values(subject)
+        for s in raw_subs:
+            client.delete(
+                collection_name=COLLECTION_NAME,
+                points_selector=Filter(must=[FieldCondition(key="subject", match=MatchValue(value=s))]),
+            )
         return 1
     except Exception:
         return 0
@@ -217,3 +319,4 @@ def list_collections() -> List[str]:
 def delete_collection(name: str) -> bool:
     c = get_qdrant_client()
     return c.delete_collection(collection_name=name) if c else False
+

@@ -199,20 +199,20 @@ async def _auto_ingest_if_empty():
 
 # ── DEFAULT SUBJECTS ENDPOINT ────────────────────────────────────────────────
 DEFAULT_SUBJECTS = [
-    "CAED",
-    "Chemistry",
+    "Mathematics",
+    "Physics",
     "Communication English",
+    "Kannada Kali / Manasu",
+    "A Scientific Approach to Health",
+    "Principles of Programming Using C",
+    "ESC",
+    "PLC",
+    "Chemistry",
+    "Professional Writing Skills in English",
     "Constitution of India",
     "Design Thinking",
-    "ESC",
-    "ETC",
-    "Kannada Kali Manasu",
-    "Mathematics ChemistryCycle",
-    "Mathematics PhysicsCycle",
-    "PLC",
-    "Physics",
-    "Principles of Programming C",
-    "Professional Writing English"
+    "Computer-Aided Engineering Drawing",
+    "ETC"
 ]
 
 @app.get("/subjects")
@@ -228,6 +228,7 @@ def get_subjects():
     
     # Return default subjects if Qdrant is not available
     return {"subjects": DEFAULT_SUBJECTS}
+
 
 
 if __name__ == "__main__":
